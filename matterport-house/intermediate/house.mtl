@@ -1,0 +1,64 @@
+newmtl lod3_room0_chunk262210_000
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+d 1
+illum 1
+map_Kd textures/lod3_room0_chunk262210_000.png
+
+newmtl lod3_room0_chunk262208_000
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+d 1
+illum 1
+map_Kd textures/lod3_room0_chunk262208_000.png
+
+newmtl lod3_room0_chunk262209_000
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+d 1
+illum 1
+map_Kd textures/lod3_room0_chunk262209_000.png
+
+newmtl lod3_room0_chunk262211_000
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+d 1
+illum 1
+map_Kd textures/lod3_room0_chunk262211_000.png
+
+newmtl lod3_room0_chunk262146_000
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+d 1
+illum 1
+map_Kd textures/lod3_room0_chunk262146_000.png
+
+newmtl lod3_room0_chunk262145_000
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+d 1
+illum 1
+map_Kd textures/lod3_room0_chunk262145_000.png
+
+newmtl lod3_room0_chunk262144_000
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+d 1
+illum 1
+map_Kd textures/lod3_room0_chunk262144_000.png
+
+newmtl lod3_room0_chunk262147_000
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+d 1
+illum 1
+map_Kd textures/lod3_room0_chunk262147_000.png
+

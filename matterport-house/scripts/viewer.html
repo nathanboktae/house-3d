@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>House GLB validation viewer</title>
+<style>body{margin:0;background:#27303c;color:white;font:15px system-ui}#status{position:absolute;top:16px;left:20px;padding:10px;background:#18202ad9;border-radius:6px}canvas{display:block}</style>
+<div id="status">Loading house.glb…</div>
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const scene=new THREE.Scene();scene.background=new THREE.Color('#27303c');
+const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,.1,200);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));document.body.append(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;
+new GLTFLoader().load('../output/house.glb',gltf=>{
+ scene.add(gltf.scene); const box=new THREE.Box3().setFromObject(gltf.scene),center=box.getCenter(new THREE.Vector3());
+ controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(22,20,22));controls.update();
+ let meshes=0,triangles=0,textures=new Set();gltf.scene.traverse(o=>{if(o.isMesh){meshes++;triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3;if(o.material.emissiveMap)textures.add(o.material.emissiveMap.uuid)}});
+ document.querySelector('#status').textContent=`Loaded: ${meshes} meshes · ${triangles.toLocaleString()} triangles · ${textures.size} embedded textures — drag to orbit, scroll to zoom`;
+},undefined,error=>{document.querySelector('#status').textContent='ERROR: '+error.message;console.error(error)});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera)});
+</script></html>

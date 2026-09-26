@@ -1,0 +1,152 @@
+warning-6030: Deprecated unsized bytesPlanes in basic DFD block. Since specification 2.0.4 bytesPlanes must be sized (non-zero) for supercompressed textures.
+    DFD block #1 bytesPlanes0 in basic DFD block is 0 but for KTX_SS_BASIS_LZ supercompressed textures, since specification 2.0.4, it must be non-zero.
+warning-6030: Deprecated unsized bytesPlanes in basic DFD block. Since specification 2.0.4 bytesPlanes must be sized (non-zero) for supercompressed textures.
+    DFD block #1 bytesPlanes0 in basic DFD block is 0 but for KTX_SS_BASIS_LZ supercompressed textures, since specification 2.0.4, it must be non-zero.
+warning-6030: Deprecated unsized bytesPlanes in basic DFD block. Since specification 2.0.4 bytesPlanes must be sized (non-zero) for supercompressed textures.
+    DFD block #1 bytesPlanes0 in basic DFD block is 0 but for KTX_SS_BASIS_LZ supercompressed textures, since specification 2.0.4, it must be non-zero.
+warning-6030: Deprecated unsized bytesPlanes in basic DFD block. Since specification 2.0.4 bytesPlanes must be sized (non-zero) for supercompressed textures.
+    DFD block #1 bytesPlanes0 in basic DFD block is 0 but for KTX_SS_BASIS_LZ supercompressed textures, since specification 2.0.4, it must be non-zero.
+warning-6030: Deprecated unsized bytesPlanes in basic DFD block. Since specification 2.0.4 bytesPlanes must be sized (non-zero) for supercompressed textures.
+    DFD block #1 bytesPlanes0 in basic DFD block is 0 but for KTX_SS_BASIS_LZ supercompressed textures, since specification 2.0.4, it must be non-zero.
+warning-6030: Deprecated unsized bytesPlanes in basic DFD block. Since specification 2.0.4 bytesPlanes must be sized (non-zero) for supercompressed textures.
+    DFD block #1 bytesPlanes0 in basic DFD block is 0 but for KTX_SS_BASIS_LZ supercompressed textures, since specification 2.0.4, it must be non-zero.
+warning-6030: Deprecated unsized bytesPlanes in basic DFD block. Since specification 2.0.4 bytesPlanes must be sized (non-zero) for supercompressed textures.
+    DFD block #1 bytesPlanes0 in basic DFD block is 0 but for KTX_SS_BASIS_LZ supercompressed textures, since specification 2.0.4, it must be non-zero.
+warning-6030: Deprecated unsized bytesPlanes in basic DFD block. Since specification 2.0.4 bytesPlanes must be sized (non-zero) for supercompressed textures.
+    DFD block #1 bytesPlanes0 in basic DFD block is 0 but for KTX_SS_BASIS_LZ supercompressed textures, since specification 2.0.4, it must be non-zero.
+INFO Draco mesh compression is available, use library at /Users/nathan.black/github/house3d/.venv-blender/lib/python3.11/site-packages/bpy/4.5/scripts/addons_core/io_scene_gltf2/libextern_draco.dylib
+22:04:14 | INFO: Starting glTF 2.0 export
+22:04:14 | INFO: Extracting primitive: chunk000_group000_sub002_chunk262211
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk001_group001_sub012_chunk262211
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk002_group001_sub013_chunk262211
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk000_group000_sub002_chunk262209
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk001_group000_sub003_chunk262209
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk002_group000_sub008_chunk262209
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk003_group000_sub011_chunk262209
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk004_group001_sub012_chunk262209
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk005_group001_sub018_chunk262209
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk006_group001_sub019_chunk262209
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk000_group000_sub002_chunk262210
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk001_group001_sub012_chunk262210
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk002_group001_sub019_chunk262210
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk000_group000_sub002_chunk262212
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk001_group000_sub003_chunk262212
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk002_group000_sub006_chunk262212
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk003_group000_sub008_chunk262212
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk004_group001_sub012_chunk262212
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk005_group001_sub013_chunk262212
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk000_group000_sub004_chunk262147
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk001_group000_sub005_chunk262147
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk002_group000_sub007_chunk262147
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk003_group000_sub009_chunk262147
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk004_group000_sub010_chunk262147
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk005_group001_sub014_chunk262147
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk006_group001_sub015_chunk262147
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk007_group001_sub016_chunk262147
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk008_group001_sub018_chunk262147
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk009_group001_sub020_chunk262147
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk010_group001_sub021_chunk262147
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk000_group000_sub002_chunk262146
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk001_group000_sub005_chunk262146
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk002_group000_sub007_chunk262146
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk003_group001_sub012_chunk262146
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk004_group001_sub014_chunk262146
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk005_group001_sub017_chunk262146
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk006_group001_sub019_chunk262146
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk007_group001_sub021_chunk262146
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk000_group000_sub003_chunk262145
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk001_group000_sub004_chunk262145
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk002_group001_sub015_chunk262145
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk003_group001_sub016_chunk262145
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk000_group000_sub002_chunk262148
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk001_group000_sub003_chunk262148
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk002_group000_sub004_chunk262148
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk003_group000_sub007_chunk262148
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk004_group000_sub009_chunk262148
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk005_group000_sub010_chunk262148
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk006_group001_sub015_chunk262148
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk007_group001_sub018_chunk262148
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk008_group001_sub019_chunk262148
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk009_group001_sub020_chunk262148
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Extracting primitive: chunk010_group001_sub021_chunk262148
+22:04:15 | INFO: Primitives created: 1
+22:04:15 | INFO: Finished glTF 2.0 export in 0.5368940830230713 s
+
+{
+  "source_tiles": 8,
+  "vertices_decoded": 121217,
+  "triangles": 108289,
+  "materials": 8,
+  "textures": 8,
+  "bounds_gltf_y_up_m": {
+    "min": [
+      -3.3340001106262207,
+      -2.734999895095825,
+      -7.453001022338867
+    ],
+    "max": [
+      12.170019149780273,
+      5.730000019073486,
+      2.690084934234619
+    ],
+    "size": [
+      15.504018783569336,
+      8.46500015258789,
+      10.143085479736328
+    ]
+  },
+  "glb_bytes": 24281436,
+  "blender_version": "4.5.3 LTS"
+}

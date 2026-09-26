@@ -1,0 +1,4 @@
+bpy==4.5.3
+DracoPy==2.1.0
+numpy==1.26.4
+Pillow==12.3.0

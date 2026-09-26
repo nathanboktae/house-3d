@@ -1,0 +1,258 @@
+[
+  {
+    "content": {
+      "uri": "3/lod3_room0_chunk262210.glb"
+    },
+    "extras": {
+      "level": 3,
+      "roomIndex": 0,
+      "chunkIndex": 262210,
+      "id": "lod3_room0_chunk262210",
+      "maxTextureSize": 4096,
+      "textureScale": 0.5,
+      "texelSize": 4
+    },
+    "geometricError": 0.02,
+    "children": [],
+    "boundingVolume": {
+      "box": [
+        9.829000473022461,
+        4.870500564575195,
+        1.5225000381469727,
+        2.341000556945801,
+        0,
+        0,
+        0,
+        -2.582500457763672,
+        0,
+        0,
+        0,
+        4.207499980926514
+      ]
+    }
+  },
+  {
+    "content": {
+      "uri": "3/lod3_room0_chunk262208.glb"
+    },
+    "extras": {
+      "level": 3,
+      "roomIndex": 0,
+      "chunkIndex": 262208,
+      "id": "lod3_room0_chunk262208",
+      "maxTextureSize": 4096,
+      "textureScale": 0.5,
+      "texelSize": 4
+    },
+    "geometricError": 0.02,
+    "children": [],
+    "boundingVolume": {
+      "box": [
+        5.363999962806702,
+        0.5194999575614929,
+        1.1475001573562622,
+        1.906000018119812,
+        0,
+        0,
+        0,
+        -1.8334999680519104,
+        0,
+        0,
+        0,
+        3.8825000524520874
+      ]
+    }
+  },
+  {
+    "content": {
+      "uri": "3/lod3_room0_chunk262209.glb"
+    },
+    "extras": {
+      "level": 3,
+      "roomIndex": 0,
+      "chunkIndex": 262209,
+      "id": "lod3_room0_chunk262209",
+      "maxTextureSize": 4096,
+      "textureScale": 0.5,
+      "texelSize": 4
+    },
+    "geometricError": 0.02,
+    "children": [],
+    "boundingVolume": {
+      "box": [
+        5.508500099182129,
+        4.8119999170303345,
+        1.4835000038146973,
+        2.0415000915527344,
+        0,
+        0,
+        0,
+        -2.524999976158142,
+        0,
+        0,
+        0,
+        4.1875
+      ]
+    }
+  },
+  {
+    "content": {
+      "uri": "3/lod3_room0_chunk262211.glb"
+    },
+    "extras": {
+      "level": 3,
+      "roomIndex": 0,
+      "chunkIndex": 262211,
+      "id": "lod3_room0_chunk262211",
+      "maxTextureSize": 4096,
+      "textureScale": 0.5,
+      "texelSize": 4
+    },
+    "geometricError": 0.02,
+    "children": [],
+    "boundingVolume": {
+      "box": [
+        9.662500858306885,
+        0.5125000476837158,
+        0.9585000276565552,
+        2.4524998664855957,
+        0,
+        0,
+        0,
+        -1.8385000228881836,
+        0,
+        0,
+        0,
+        3.6934999227523804
+      ]
+    }
+  },
+  {
+    "content": {
+      "uri": "3/lod3_room0_chunk262146.glb"
+    },
+    "extras": {
+      "level": 3,
+      "roomIndex": 0,
+      "chunkIndex": 262146,
+      "id": "lod3_room0_chunk262146",
+      "maxTextureSize": 4096,
+      "textureScale": 0.5,
+      "texelSize": 4
+    },
+    "geometricError": 0.02,
+    "children": [],
+    "boundingVolume": {
+      "box": [
+        -1.402000069618225,
+        2.439999982714653,
+        -0.1434999704360962,
+        1.9320000410079956,
+        0,
+        0,
+        0,
+        -2.3499999791383743,
+        0,
+        0,
+        0,
+        2.5735000371932983
+      ]
+    }
+  },
+  {
+    "content": {
+      "uri": "3/lod3_room0_chunk262145.glb"
+    },
+    "extras": {
+      "level": 3,
+      "roomIndex": 0,
+      "chunkIndex": 262145,
+      "id": "lod3_room0_chunk262145",
+      "maxTextureSize": 4096,
+      "textureScale": 0.5,
+      "texelSize": 4
+    },
+    "geometricError": 0.02,
+    "children": [],
+    "boundingVolume": {
+      "box": [
+        0.12749993801116943,
+        5.959500551223755,
+        0.2755000591278076,
+        3.402500033378601,
+        0,
+        0,
+        0,
+        -1.2375004291534424,
+        0,
+        0,
+        0,
+        3.002500057220459
+      ]
+    }
+  },
+  {
+    "content": {
+      "uri": "3/lod3_room0_chunk262144.glb"
+    },
+    "extras": {
+      "level": 3,
+      "roomIndex": 0,
+      "chunkIndex": 262144,
+      "id": "lod3_room0_chunk262144",
+      "maxTextureSize": 4096,
+      "textureScale": 0.5,
+      "texelSize": 4
+    },
+    "geometricError": 0.02,
+    "children": [],
+    "boundingVolume": {
+      "box": [
+        0.15699994564056396,
+        -1.2700000256299973,
+        -0.15500009059906006,
+        3.3730000257492065,
+        0,
+        0,
+        0,
+        -1.4200000315904617,
+        0,
+        0,
+        0,
+        2.5709999799728394
+      ]
+    }
+  },
+  {
+    "content": {
+      "uri": "3/lod3_room0_chunk262147.glb"
+    },
+    "extras": {
+      "level": 3,
+      "roomIndex": 0,
+      "chunkIndex": 262147,
+      "id": "lod3_room0_chunk262147",
+      "maxTextureSize": 4096,
+      "textureScale": 0.5,
+      "texelSize": 4
+    },
+    "geometricError": 0.02,
+    "children": [],
+    "boundingVolume": {
+      "box": [
+        1.9999999850988388,
+        2.439999982714653,
+        0.4945000410079956,
+        1.5299999862909317,
+        0,
+        0,
+        0,
+        -2.3499999791383743,
+        0,
+        0,
+        0,
+        3.212499976158142
+      ]
+    }
+  }
+]

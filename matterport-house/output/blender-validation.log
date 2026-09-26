@@ -1,0 +1,123 @@
+22:06:49 | INFO: Data are loaded, start creating Blender stuff
+22:06:49 | INFO: Blender create Mesh node chunk000_group000_sub002_chunk262211
+22:06:49 | INFO: Blender create Mesh node chunk001_group001_sub012_chunk262211
+22:06:49 | INFO: Blender create Mesh node chunk002_group001_sub013_chunk262211
+22:06:49 | INFO: Blender create Mesh node chunk000_group000_sub002_chunk262209
+22:06:49 | INFO: Blender create Mesh node chunk001_group000_sub003_chunk262209
+22:06:49 | INFO: Blender create Mesh node chunk002_group000_sub008_chunk262209
+22:06:49 | INFO: Blender create Mesh node chunk003_group000_sub011_chunk262209
+22:06:49 | INFO: Blender create Mesh node chunk004_group001_sub012_chunk262209
+22:06:49 | INFO: Blender create Mesh node chunk005_group001_sub018_chunk262209
+22:06:49 | INFO: Blender create Mesh node chunk006_group001_sub019_chunk262209
+22:06:49 | INFO: Blender create Mesh node chunk000_group000_sub002_chunk262210
+22:06:49 | INFO: Blender create Mesh node chunk001_group001_sub012_chunk262210
+22:06:49 | INFO: Blender create Mesh node chunk002_group001_sub019_chunk262210
+22:06:49 | INFO: Blender create Mesh node chunk000_group000_sub002_chunk262212
+22:06:49 | INFO: Blender create Mesh node chunk001_group000_sub003_chunk262212
+22:06:49 | INFO: Blender create Mesh node chunk002_group000_sub006_chunk262212
+22:06:49 | INFO: Blender create Mesh node chunk003_group000_sub008_chunk262212
+22:06:49 | INFO: Blender create Mesh node chunk004_group001_sub012_chunk262212
+22:06:49 | INFO: Blender create Mesh node chunk005_group001_sub013_chunk262212
+22:06:49 | INFO: Blender create Mesh node chunk000_group000_sub004_chunk262147
+22:06:49 | INFO: Blender create Mesh node chunk001_group000_sub005_chunk262147
+22:06:49 | INFO: Blender create Mesh node chunk002_group000_sub007_chunk262147
+22:06:49 | INFO: Blender create Mesh node chunk003_group000_sub009_chunk262147
+22:06:49 | INFO: Blender create Mesh node chunk004_group000_sub010_chunk262147
+22:06:49 | INFO: Blender create Mesh node chunk005_group001_sub014_chunk262147
+22:06:49 | INFO: Blender create Mesh node chunk006_group001_sub015_chunk262147
+22:06:49 | INFO: Blender create Mesh node chunk007_group001_sub016_chunk262147
+22:06:49 | INFO: Blender create Mesh node chunk008_group001_sub018_chunk262147
+22:06:49 | INFO: Blender create Mesh node chunk009_group001_sub020_chunk262147
+22:06:49 | INFO: Blender create Mesh node chunk010_group001_sub021_chunk262147
+22:06:49 | INFO: Blender create Mesh node chunk000_group000_sub002_chunk262146
+22:06:49 | INFO: Blender create Mesh node chunk001_group000_sub005_chunk262146
+22:06:49 | INFO: Blender create Mesh node chunk002_group000_sub007_chunk262146
+22:06:49 | INFO: Blender create Mesh node chunk003_group001_sub012_chunk262146
+22:06:49 | INFO: Blender create Mesh node chunk004_group001_sub014_chunk262146
+22:06:49 | INFO: Blender create Mesh node chunk005_group001_sub017_chunk262146
+22:06:49 | INFO: Blender create Mesh node chunk006_group001_sub019_chunk262146
+22:06:49 | INFO: Blender create Mesh node chunk007_group001_sub021_chunk262146
+22:06:49 | INFO: Blender create Mesh node chunk000_group000_sub003_chunk262145
+22:06:49 | INFO: Blender create Mesh node chunk001_group000_sub004_chunk262145
+22:06:49 | INFO: Blender create Mesh node chunk002_group001_sub015_chunk262145
+22:06:49 | INFO: Blender create Mesh node chunk003_group001_sub016_chunk262145
+22:06:49 | INFO: Blender create Mesh node chunk000_group000_sub002_chunk262148
+22:06:49 | INFO: Blender create Mesh node chunk001_group000_sub003_chunk262148
+22:06:49 | INFO: Blender create Mesh node chunk002_group000_sub004_chunk262148
+22:06:49 | INFO: Blender create Mesh node chunk003_group000_sub007_chunk262148
+22:06:49 | INFO: Blender create Mesh node chunk004_group000_sub009_chunk262148
+22:06:49 | INFO: Blender create Mesh node chunk005_group000_sub010_chunk262148
+22:06:49 | INFO: Blender create Mesh node chunk006_group001_sub015_chunk262148
+22:06:49 | INFO: Blender create Mesh node chunk007_group001_sub018_chunk262148
+22:06:49 | INFO: Blender create Mesh node chunk008_group001_sub019_chunk262148
+22:06:49 | INFO: Blender create Mesh node chunk009_group001_sub020_chunk262148
+22:06:49 | INFO: Blender create Mesh node chunk010_group001_sub021_chunk262148
+22:06:49 | INFO: glTF import finished in 0.19s
+Fra:1 Mem:249.53M (Peak 270.75M) | Time:00:00.13 | Rendering 1 / 64 samples
+Fra:1 Mem:249.82M (Peak 270.75M) | Time:00:00.15 | Rendering 25 / 64 samples
+Fra:1 Mem:249.77M (Peak 270.75M) | Time:00:00.46 | Rendering 50 / 64 samples
+Fra:1 Mem:249.84M (Peak 270.75M) | Time:00:00.47 | Rendering 64 / 64 samples
+Saved: '/Users/nathan.black/github/house3d/matterport-house/output/preview-front.png'
+Time: 00:00.67 (Saving: 00:00.09)
+
+Fra:1 Mem:254.87M (Peak 263.43M) | Time:00:00.01 | Rendering 1 / 64 samples
+Fra:1 Mem:254.80M (Peak 263.43M) | Time:00:00.01 | Rendering 25 / 64 samples
+Fra:1 Mem:254.74M (Peak 263.43M) | Time:00:00.20 | Rendering 50 / 64 samples
+Fra:1 Mem:254.87M (Peak 263.43M) | Time:00:00.21 | Rendering 64 / 64 samples
+Saved: '/Users/nathan.black/github/house3d/matterport-house/output/preview-back.png'
+Time: 00:00.45 (Saving: 00:00.09)
+
+Fra:1 Mem:254.87M (Peak 254.87M) | Time:00:00.00 | Rendering 1 / 64 samples
+Fra:1 Mem:254.81M (Peak 254.87M) | Time:00:00.01 | Rendering 25 / 64 samples
+Fra:1 Mem:254.75M (Peak 254.87M) | Time:00:00.19 | Rendering 50 / 64 samples
+Fra:1 Mem:254.87M (Peak 254.87M) | Time:00:00.20 | Rendering 64 / 64 samples
+Saved: '/Users/nathan.black/github/house3d/matterport-house/output/preview-top.png'
+Time: 00:00.43 (Saving: 00:00.09)
+
+{
+  "blender_import": "passed",
+  "mesh_objects": 53,
+  "triangles": 108289,
+  "embedded_textures": 8,
+  "texture_sizes": [
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ]
+  ],
+  "uv_layers_present": true,
+  "bounds_match_source": true,
+  "renders": [
+    "preview-front.png",
+    "preview-back.png",
+    "preview-top.png"
+  ]
+}
