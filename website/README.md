@@ -50,7 +50,7 @@ Observed for Nathan’s endpoint during this update:
 - A WebSocket handshake to `/api/websocket` with that same origin returned **`auth_required`**.
 - The static preview’s **Test connection** button also received the handshake directly from Nabu Casa in the browser. This test sends no token.
 
-The app uses the working WebSocket route, so no REST CORS configuration is needed for its current functionality. Authenticated live states still require a valid token and have not been tested against Nathan’s instance without one.
+The app uses the working WebSocket route, so no REST CORS configuration is needed for its current functionality. Authenticated read-only registry and state queries were subsequently verified using the local `.env` token. The static build never reads or embeds that token.
 
 If adding REST calls later, use `Authorization: Bearer HA_TOKEN` on requests to the configured instance and allow the deployed website’s **origin** in Home Assistant’s HTTP CORS settings, for example `https://USERNAME.github.io` (no repository path). Current Home Assistant exposes **CORS allowed origins** under Settings → System → Network → HTTP server; older versions use `http.cors_allowed_origins` in `configuration.yaml`. See the [official HTTP documentation](https://www.home-assistant.io/integrations/http/). No Home Assistant settings were changed by this work.
 
@@ -67,24 +67,24 @@ The workflow installs the exact pinned viewer dependencies, runs the browser-cli
 
 ## Map rooms
 
-The scan's mesh chunks do not define rooms. This prototype applies spatial shading boxes in world coordinates, independent of the original mesh/material divisions. The three starting regions are **illustrative drafts, not surveyed room boundaries**.
+The default map contains Nathan’s 19 named rooms, traced as polygon footprints from the numbered floor images. M12 and B6 share one Stairway spanning both floors. B8 is Basement Hallway. Click an in-scene label or sidebar card to select its room. **Main Floor** and **Basement** filter the scan, labels, and sidebar; All floors shows main-floor labels so basement names do not obscure the floor above. The Labels checkbox hides labels.
 
-- Select a room and expand the editor, or use **Add room**.
-- Choose a floor. The approximate floor split is Y = -0.15 m and may need refinement for stairs/split levels.
-- **Draw footprint in top view**: click two opposite corners around the room's floor. Press Escape to cancel.
-- Adjust X/Z boundaries and the Y height range. This prevents a light affecting the room directly above or below it. Drawing uses a horizontal plane at the room's minimum height; perspective and wall height can affect perceived alignment.
-- Give it a name and select its Home Assistant entities.
-- Toggle demo lights or change their brightness to preview the shaded footprint.
+The map matches 14 Home Assistant lights across 13 rooms. Den combines `light.den` and `light.media`. Primary Bath uses `light.primary_vanity`; Kitchen uses `light.kitchen_south`. Living Room, Upper Hallway, Stairway, Basement Bathroom, Storage Room, and Basement Hallway have no mapped lights and remain neutral in live mode. The exterior `light.front_door` is intentionally unassigned. Entity matches were checked against the read-only inventory; no HA area, device, or configuration was changed.
 
-Up to 16 rectangular regions are supported. Avoid overlapping regions: their tint multipliers compound. Unmapped areas retain their original appearance. Nonrectangular rooms can use multiple nonoverlapping boxes mapped to the same entities. For exact wall boundaries, a future version can replace boxes with polygons or segmented room geometry.
+- Expand **Edit selected room** to adjust the name, bounds, and mapped light/switch entities.
+- Changing bounds scales the existing polygon and its label. Height bounds keep lighting on the correct floor; the approximate floor split is Y = -0.15 m.
+- **Draw footprint in top view** replaces the selected polygon with a rectangle: click two opposite corners; Escape cancels.
+- Demo toggles and brightness sliders preview the effect without controlling real lights.
 
-Mapping and demo levels persist in browser local storage. **Export room map** creates a JSON backup; **Import map** validates and restores it. Mappings are specific to the browser origin and are not yet synced between devices.
+Up to 32 regions with 3–16 polygon vertices each are supported. Polygon points are editable in exported JSON (`footprint` contains world X/Z pairs). Older rectangular maps remain supported. Avoid overlaps, which compound shading. Concave footprints keep areas such as Storage Room from spilling into the stairwell. Boundaries are approximate traces, not surveyed walls.
+
+Mapping and demo levels persist in local storage (`house-live-rooms-v2`). **Export room map** creates a JSON backup; **Import map** validates and restores it. Untouched old draft regions automatically upgrade to the named map; customized legacy maps are preserved. **Use labeled room map** loads the confirmed defaults and backs up the previous map under `house-live-rooms-backup`. Maps are specific to the browser origin and are not synced between devices.
 
 In live mode, any mapped entity known to be on illuminates the room, using the brightest known light's brightness. Switches use full brightness. If no mapped entity is known on but any is missing/unavailable, the room remains neutral and is labeled unknown. All-known-off rooms dim to 18% rather than disappearing. This intentionally visualizes state; it is not a physical light simulation.
 
 ## Visual limitations
 
-The source textures have baked lighting. A fragment shader adjusts their brightness and tint inside room bounds, preserving UVs and textures. Ordinary lights alone would not reliably affect the source’s emissive materials. This visualizes on/off state rather than simulating fixtures or new shadows. The starting room bounds are drafts.
+The source textures have baked lighting. A fragment shader adjusts their brightness and tint inside room bounds, preserving UVs and textures. Ordinary lights alone would not reliably affect the source’s emissive materials. This visualizes on/off state rather than simulating fixtures or new shadows. Room footprints are approximate, especially at shared walls and open-plan boundaries.
 
 ## Validation
 
@@ -95,3 +95,5 @@ python3 -m unittest discover -s website/tests -p 'test_*.py'
 ```
 
 Tests cover browser storage and forgetting, secure URL validation, partial-storage failures, per-connection authentication, reconnects, heartbeats, subscription/snapshot ordering, stale callback protection, state filtering, permission/authentication failures, and unknown-room handling. Build checks verify the original GLB checksum, subdirectory-safe paths, and exclusion of secret/server files. Browser testing confirms the settings dialog, direct unauthenticated Nabu Casa handshake, demo lighting, and static GLB rendering. No actual token is required or embedded in tests.
+
+Room tests also cover the confirmed map, floor filtering, concave footprints, proportional edits, and migration without losing custom mappings.
