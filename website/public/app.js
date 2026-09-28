@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {defaults,validateRooms,roomState,MAX_ROOMS} from './rooms.mjs';
+import {HomeAssistant,DEFAULT_HA_URL,TOKEN_KEY,URL_KEY,loadConnection,saveConnection,forgetConnection,normalizeURL,testConnection} from './ha.mjs';
 const $=id=>document.getElementById(id),stage=$('stage');
 let rooms=structuredClone(defaults),selected=rooms[0].id,mode='demo',snapshot={status:'not_configured',entities:[]},drawStart=null,drawing=false,model=null;
 try{const saved=localStorage.getItem('house-live-rooms-v1');if(saved)rooms=validateRooms(JSON.parse(saved));selected=rooms[0]?.id}catch{$('notice').textContent='Saved mapping could not be read. Using draft regions.'}
@@ -22,7 +23,7 @@ function updateVisuals(){
  const r=rooms.find(r=>r.id===selected);box.visible=!!r&&$('editor').open;
  if(r){box.box.min.fromArray(r.min);box.box.max.fromArray(r.max)}
 }
-new GLTFLoader().load('/model/house.glb',gltf=>{
+new GLTFLoader().load('./model/house.glb',gltf=>{
  model=gltf.scene;scene.add(model);
  model.traverse(o=>{if(!o.isMesh)return;const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(material=>{
   material.onBeforeCompile=shader=>{
@@ -45,7 +46,7 @@ new GLTFLoader().load('/model/house.glb',gltf=>{
   };
   material.customProgramCacheKey=()=> 'house-room-zones-v1';material.needsUpdate=true;
  })});$('loading').hidden=true;updateVisuals();
-},event=>{if(event.total)$('loading').textContent=`Loading your house… ${Math.round(event.loaded/event.total*100)}%`},()=>{$('loading').textContent='Could not load the model. Check the local server and GLB path.'});
+},event=>{if(event.total)$('loading').textContent=`Loading Nathan’s home… ${Math.round(event.loaded/event.total*100)}%`},()=>{$('loading').textContent='Could not load the model. Check that the deployed site includes model/house.glb.'});
 $('floor').onchange=()=>{
  const floor=$('floor').value;
  renderer.clippingPlanes=floor==='all'?[]:floor==='upper'?[new THREE.Plane(new THREE.Vector3(0,1,0),.15)]:[new THREE.Plane(new THREE.Vector3(0,-1,0),-.15)];
@@ -98,9 +99,40 @@ renderer.domElement.addEventListener('pointerdown',e=>{
 });
 function setMode(next){mode=next;$('demo').classList.toggle('active',mode==='demo');$('live').classList.toggle('active',mode==='live');$('mode-note').textContent=mode==='demo'?'Demo controls only change this view.':'Read-only live states. Unknown rooms keep their original appearance.';renderRooms();updateVisuals()}
 $('demo').onclick=()=>setMode('demo');$('live').onclick=()=>setMode('live');
-const labels={not_configured:'Demo · no token configured',connecting:'Connecting to Home Assistant',connected:'Home Assistant connected',auth_failed:'Token rejected · check .env',disconnected:'Home Assistant offline'};
-const events=new EventSource('/api/events');events.onmessage=e=>{snapshot=JSON.parse(e.data);$('connection').textContent=labels[snapshot.status]||snapshot.status;$('connection').classList.toggle('online',snapshot.status==='connected');renderRooms();if(document.activeElement!==$('entities'))renderEntities();updateVisuals()};events.onerror=()=>{snapshot={status:'disconnected',entities:[]};$('connection').textContent='Local bridge disconnected';$('connection').classList.remove('online');renderRooms();updateVisuals()};
-$('help').onclick=()=>$('setup').showModal();$('close-help').onclick=()=>$('setup').close();
-$('export').onclick=()=>{const blob=new Blob([JSON.stringify(rooms,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='house-rooms.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+const labels={not_configured:'Demo · no saved token',connecting:'Connecting to your home',connected:'Your home is connected',auth_failed:'Token rejected · open settings',disconnected:'Home offline · reconnecting',permission_denied:'Home Assistant denied access',connection_error:'Connection failed · open settings',protocol_error:'Connection error · open settings'};
+function receiveState(next){snapshot=next;if($('setup').open&&snapshot.status!=='not_configured')$('connection-result').textContent=labels[snapshot.status]||snapshot.status;$('connection').textContent=labels[snapshot.status]||snapshot.status;$('connection').classList.toggle('online',snapshot.status==='connected');renderRooms();if(document.activeElement!==$('entities'))renderEntities();updateVisuals()}
+const homeAssistant=new HomeAssistant(receiveState);
+function restoreConnection(){try{homeAssistant.start(loadConnection(localStorage))}catch{homeAssistant.stop();notify('Browser storage is unavailable or the saved connection is invalid. Open Home Assistant settings.')}}
+function refreshSettings(){
+ try{const saved=loadConnection(localStorage);$('ha-url').value=saved.url;$('ha-token').value='';$('ha-token').placeholder=saved.token?'Token saved · leave blank to keep it':'Paste a long-lived access token';$('token-state').textContent=saved.token?'A token is saved in this browser.':'No token saved yet.'}
+ catch{$('ha-url').value=DEFAULT_HA_URL;$('token-state').textContent='Browser storage is unavailable.'}
+}
+$('help').onclick=()=>{refreshSettings();$('connection-result').textContent='';$('setup').showModal()};
+$('close-help').onclick=()=>$('setup').close();
+$('setup').addEventListener('close',()=>{$('ha-token').value=''});
+$('connection-form').onsubmit=e=>{
+ e.preventDefault();
+ try{
+  const url=normalizeURL($('ha-url').value.trim());let saved={url:'',token:''};try{saved=loadConnection(localStorage)}catch{}
+  const token=$('ha-token').value.trim()||(saved.url===url?saved.token:'');
+  if(!token)throw Error('Enter a token for this Home Assistant URL.');
+  const config=saveConnection(localStorage,{url,token});homeAssistant.start(config);refreshSettings();setMode('live');$('connection-result').textContent='Saved in this browser. Connecting…';
+ }catch(error){$('connection-result').textContent=error.message}
+};
+$('forget-token').onclick=()=>{
+ homeAssistant.stop();
+ try{forgetConnection(localStorage);refreshSettings();$('connection-result').textContent='Token removed from this browser. Revoke it in Home Assistant too if you no longer need it.';setMode('demo')}
+ catch{$('ha-token').value='';$('connection-result').textContent='Disconnected, but storage could not be cleared. Remove HA_TOKEN in your browser’s site settings.'}
+};
+$('test-connection').onclick=async()=>{
+ const button=$('test-connection');button.disabled=true;$('connection-result').textContent='Checking direct WebSocket access…';
+ try{await testConnection($('ha-url').value.trim());$('connection-result').textContent='Direct browser connection works. Home Assistant is ready for a token.'}
+ catch(error){$('connection-result').textContent=error.message}finally{button.disabled=false}
+};
+addEventListener('storage',event=>{if(event.key===null||[TOKEN_KEY,URL_KEY].includes(event.key))restoreConnection()});
+addEventListener('pagehide',()=>homeAssistant.stop());
+addEventListener('pageshow',event=>{if(event.persisted)restoreConnection()});
+restoreConnection();
+$('export').onclick=()=>{const blob=new Blob([JSON.stringify(rooms,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='nathans-home-rooms.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 $('import').onchange=async()=>{try{const file=$('import').files[0];if(!file)return;if(file.size>100000)throw Error('Room map is too large.');rooms=validateRooms(JSON.parse(await file.text()));selected=rooms[0]?.id;save();renderRooms();renderEditor();updateVisuals();notify('Room map imported.')}catch(e){notify(`Import failed: ${e.message}`)}finally{$('import').value=''}};
 renderRooms();renderEditor();updateVisuals();renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera)});

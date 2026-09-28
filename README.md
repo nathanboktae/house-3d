@@ -7,6 +7,6 @@ The completed model and reproducible conversion workflow are in [matterport-hous
 - [Rendered preview](matterport-house/output/preview-front.png)
 - [Original public-viewer assets](matterport-house/source/)
 
-## Live Home Assistant website
+## Nathan’s Home
 
-[House / Live](website/README.md) adds an interactive viewer, editable room lighting zones, and a server-side read-only Home Assistant connection. Start it with `.venv-web/bin/python website/server.py` and open http://127.0.0.1:8787/.
+[Nathan’s Home](website/README.md) is a static 3D house viewer with editable lighting zones and a direct browser-to-Home-Assistant connection. Enter `HA_TOKEN` in the site’s settings to save it in browser local storage. Run `python3 website/server.py`, or build `website/dist/` for GitHub Pages. No backend is required.

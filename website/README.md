@@ -1,32 +1,69 @@
-# House / Live
+# Nathan’s Home
 
-A local website for the archived house GLB with room brightness driven by Home Assistant. Demo mode is usable now. Actual Home Assistant authentication and entity mapping require your token and room setup.
+A backend-free 3D home viewer with editable room lighting regions and direct Home Assistant updates. It runs on GitHub Pages or any HTTPS static host. The GLB is unchanged; demo controls never switch real lights.
 
-## Start
+## Run locally
 
-From the repository root:
+From the repository root, with Python 3 and Node.js/npm installed:
 
 ```sh
-uv venv --python 3.13 .venv-web
-uv pip install --python .venv-web/bin/python -r website/requirements.txt
-# Three.js uses the existing pinned dependency:
-pnpm install --dir matterport-house/scripts --frozen-lockfile
-.venv-web/bin/python website/server.py
+npm install --ignore-scripts --prefix matterport-house/scripts
+python3 website/server.py
 ```
 
-Open **http://127.0.0.1:8787/**. No token is required for demo mode. The original GLB is served from its existing location and is not modified. The server uses local assets; no model upload or CDN is needed.
+Open **http://127.0.0.1:8787/**. The existing pnpm lockfile can also be used: `pnpm install --dir matterport-house/scripts --frozen-lockfile`.
+
+`server.py` only builds and serves static files using Python’s standard library. No Python packages, API proxy, `.env`, or backend runtime are needed. Use `--port 8788` if the old preview is still running. For a build without a preview server:
+
+```sh
+python3 website/build.py
+```
+
+Deploy **only `website/dist/`**. The allowlisted build includes the frontend, pinned Three.js files and license, and `model/house.glb`. It excludes `.env`, logs, source scan metadata, tests, and Python code. All asset URLs are relative, including import-map entries, so repository subpaths such as `/house3d/` work. No third-party runtime script CDN is used.
 
 ## Connect Home Assistant
 
-1. Sign into your [Home Assistant instance](https://home-assistant.example).
-2. In your user profile, find **Long-Lived Access Tokens** (under Security). Create a token named **House 3D**. A dedicated non-administrator user is preferable when available.
-3. Copy `website/.env.example` to `website/.env`. Paste the token after `HA_TOKEN=`. Do not put it in chat or source code. `.env` files are ignored by Git and are outside the web-served directories.
-4. Restart `website/server.py`. The connection badge should turn green. Select **Live home**.
-5. Select a room, expand **Edit selected room**, and select the corresponding lights or switches. Cmd/Ctrl-click for multiple entities.
+1. Open **Home Assistant settings** in the website.
+2. Confirm the Home Assistant HTTPS URL (Nathan’s Nabu Casa instance is prefilled).
+3. Paste a long-lived access token into **HA_TOKEN**, then click **Save & Connect**. Create a token in your Home Assistant profile if needed.
+4. Choose **Live home**, then map rooms to their light/switch entities.
 
-The server reads the token only at startup. The app's integration is read-only: it sends `auth`, `subscribe_events` for `state_changed`, and `get_states`. It never sends a service call. The token itself inherits its user's Home Assistant permissions; it is not a scoped read-only credential. It is never sent to browser clients or included in logs.
+The browser stores the token under local-storage key `HA_TOKEN` and the selected origin under `HA_URL`. It reconnects automatically on reload and after network interruptions. Leaving the token field empty preserves the saved token only when the instance URL is unchanged. Changing the URL requires supplying a token for that instance. **Forget token** closes the connection and deletes those two storage keys; it does not revoke the credential in Home Assistant. Room maps remain saved separately. The former server `.env` is no longer read or needed.
 
-The bridge uses Home Assistant's documented [WebSocket API](https://developers.home-assistant.io/docs/api/websocket/) and [long-lived token authentication](https://developers.home-assistant.io/docs/auth_api/#long-lived-access-token). State changes are pushed to the browser with server-sent events. On disconnect the cache is cleared and reconnection backs off to 30 seconds; rejected tokens require updating `.env` and restarting. Only light/switch IDs, friendly names, states, brightness and update timestamps reach the browser.
+The settings dialog does not display the saved token. Browser storage failures are reported instead of silently pretending the token was saved. Other open tabs of this origin update when the saved credentials change.
+
+### Authentication on every request
+
+Home Assistant’s [WebSocket protocol](https://developers.home-assistant.io/docs/api/websocket/) authenticates once per socket with `{type: "auth", access_token: HA_TOKEN}`. Every subsequent command is authorized by that authenticated connection; repeating the token on every command is not part of the protocol. Each reconnect sends the saved token again. The app subscribes to `state_changed`, obtains `get_states`, and sends heartbeat `ping` messages. It never calls a control service or uses REST.
+
+The token is sent **only to the configured Home Assistant WebSocket endpoint**. It is never appended to a URL or attached to GitHub Pages, GLB, JavaScript, or texture requests. It is never included in room-map exports, build artifacts, or application logs.
+
+Local storage persists the token unencrypted for this browser profile. Any JavaScript running on the same origin can read it; a token has its Home Assistant user’s permissions, even though this app is read-only. Use a trusted browser/site and preferably a dedicated non-administrator HA user. All projects under a given `username.github.io` share the same origin and local storage; a separate trusted custom domain provides separation from other Pages projects. The build vendors its scripts locally, but deployment code must still be trusted. Public static hosting also makes the included house GLB publicly downloadable; Home Assistant authentication protects live states, not the static model.
+
+## Does Nabu Casa support CORS?
+
+Nabu Casa exposes the Home Assistant instance through its remote-access tunnel. REST CORS and WebSocket origins are separate mechanisms; a successful WebSocket connection does not imply REST requests are allowed.
+
+Observed for Nathan’s endpoint during this update:
+
+- An unauthenticated `OPTIONS /api/states` preflight with origin `https://example.github.io` and requested header `authorization` returned **403**, with no `Access-Control-Allow-*` headers. REST is therefore not enabled for that sample origin as currently configured; the actual deployed origin may differ.
+- A WebSocket handshake to `/api/websocket` with that same origin returned **`auth_required`**.
+- The static preview’s **Test connection** button also received the handshake directly from Nabu Casa in the browser. This test sends no token.
+
+The app uses the working WebSocket route, so no REST CORS configuration is needed for its current functionality. Authenticated live states still require a valid token and have not been tested against Nathan’s instance without one.
+
+If adding REST calls later, use `Authorization: Bearer HA_TOKEN` on requests to the configured instance and allow the deployed website’s **origin** in Home Assistant’s HTTP CORS settings, for example `https://USERNAME.github.io` (no repository path). Current Home Assistant exposes **CORS allowed origins** under Settings → System → Network → HTTP server; older versions use `http.cors_allowed_origins` in `configuration.yaml`. See the [official HTTP documentation](https://www.home-assistant.io/integrations/http/). No Home Assistant settings were changed by this work.
+
+## Deploy to GitHub Pages
+
+The repository includes `.github/workflows/pages.yml`, triggered **manually** with `workflow_dispatch`:
+
+1. Push the code and model to your GitHub repository.
+2. In repository **Settings → Pages**, choose **GitHub Actions** as the source.
+3. Run **Actions → Deploy Nathan’s Home → Run workflow**.
+4. Open the Pages URL and enter the token through Home Assistant settings on that site.
+
+The workflow installs the exact pinned viewer dependencies, runs the browser-client tests, builds and checks `website/dist`, and deploys that artifact using the official Pages actions. It does not use a GitHub secret containing `HA_TOKEN`; each visitor supplies a token locally in their own browser. It does not deploy on every push. This workflow has been prepared but has not been run or published from this task. GitHub’s [custom Pages workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages) explains repository setup.
 
 ## Map rooms
 
@@ -45,19 +82,16 @@ Mapping and demo levels persist in browser local storage. **Export room map** cr
 
 In live mode, any mapped entity known to be on illuminates the room, using the brightest known light's brightness. Switches use full brightness. If no mapped entity is known on but any is missing/unavailable, the room remains neutral and is labeled unknown. All-known-off rooms dim to 18% rather than disappearing. This intentionally visualizes state; it is not a physical light simulation.
 
-## Scope and hosting
+## Visual limitations
 
-The server binds only to `127.0.0.1` and checks Host/Origin to prevent cross-site access to home states. It has no remote-user authentication and must not be exposed directly to the Internet. A next deployment could be an authenticated Home Assistant dashboard integration or a server behind authenticated HTTPS. The Nabu Casa URL supplies the upstream Home Assistant connection; it does not automatically host this website.
-
-The source textures have baked lighting. A fragment shader adjusts their brightness and tint inside room bounds, preserving UVs and textures. Adding ordinary lights alone would not reliably affect the source's emissive materials. This approach communicates on/off state clearly, but does not simulate fixtures, cast shadows, or remove shadows captured in the scan. Demo controls only affect the website; actual light control is not implemented.
+The source textures have baked lighting. A fragment shader adjusts their brightness and tint inside room bounds, preserving UVs and textures. Ordinary lights alone would not reliably affect the source’s emissive materials. This visualizes on/off state rather than simulating fixtures or new shadows. The starting room bounds are drafts.
 
 ## Validation
 
 ```sh
-.venv-web/bin/python -m unittest discover -s website/tests -v
-node --test website/tests/rooms.test.mjs
+node --test website/tests/*.test.mjs
+python3 website/build.py
+python3 -m unittest discover -s website/tests -p 'test_*.py'
 ```
 
-Tests exercise the WebSocket auth/snapshot/subscription flow against a local fake HA server, state updates, disconnect invalidation, rejected tokens, state ordering, filtered data, inaccessible secret paths, and Host/Origin checks. Frontend tests cover aggregation of mixed/unknown states and room-map validation. Browser checks verify the GLB renders and demo toggles visibly change regional brightness; disconnected live mode shows unknown state with disabled toggles. Real authenticated HA behavior remains unverified until a token is configured.
-
-The supplied Nabu Casa endpoint was checked without credentials on 2026-09-28 and returned `auth_required`. Python’s default certificate-chain validation encountered a compatibility error on this machine; the bridge now uses `truststore` with native system certificate verification, retaining TLS hostname and certificate checks. The unauthenticated endpoint check then passed.
+Tests cover browser storage and forgetting, secure URL validation, partial-storage failures, per-connection authentication, reconnects, heartbeats, subscription/snapshot ordering, stale callback protection, state filtering, permission/authentication failures, and unknown-room handling. Build checks verify the original GLB checksum, subdirectory-safe paths, and exclusion of secret/server files. Browser testing confirms the settings dialog, direct unauthenticated Nabu Casa handshake, demo lighting, and static GLB rendering. No actual token is required or embedded in tests.
