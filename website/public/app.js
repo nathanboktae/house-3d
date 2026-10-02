@@ -139,21 +139,22 @@ function setView(view){
 for(const [id,view] of [['orbit','all'],['main-floor','upper'],['basement','lower'],['outside','outside']])$(id).onclick=()=>setView(view);
 $('aerial-photo').onerror=()=>{$('aerial-error').hidden=false};
 function renderOutside(){
- $('outdoor-controls').replaceChildren();$('outdoor-markers').replaceChildren();
+ $('outdoor-markers').replaceChildren();
  const positions={'light.deck_light':[83,74],'light.backyard_cam_floodlight':[87,28],'light.front_door':[38,53]};
  for(const [id,name] of outdoorLights){
-  const card=document.createElement('div');card.className='room';const heading=document.createElement('h3');heading.textContent=name;card.append(heading);
+  const card=document.createElement('div');card.className='room';const head=document.createElement('div');head.className='room-head';const heading=document.createElement('span');heading.className='room-name';heading.textContent=name;head.append(heading);card.append(head);
   if(snapshot.entities.some(e=>e.id===id)){
-   appendDeviceControl(card,id);const marker=deviceButton(id);marker.classList.add('outdoor-marker');marker.textContent=`☀ ${name}`;marker.style.left=positions[id][0]+'%';marker.style.top=positions[id][1]+'%';$('outdoor-markers').append(marker);
+   const holder=document.createElement('div');const toggle=appendDeviceControl(holder,id);head.append(toggle);const slider=holder.querySelector('input');if(slider)card.append(slider);const marker=deviceButton(id);marker.classList.add('outdoor-marker');marker.textContent=`☀ ${name}`;marker.style.left=positions[id][0]+'%';marker.style.top=positions[id][1]+'%';$('outdoor-markers').append(marker);
   }
   else {const note=document.createElement('p');note.className='note';note.textContent=snapshot.status==='connected'?'Device not found.':'Waiting for Home Assistant connection.';card.append(note)}
-  $('outdoor-controls').append(card);
+  $('rooms').append(card);
  }
 }
 function renderRooms(){
  if(adjustingBrightness)return;
  $('rooms').replaceChildren();renderLabels();
- if(activeView==='outside'){renderOutside();const note=document.createElement('p');note.className='note';note.textContent='Outdoor lights are shown in the Outside view.';$('rooms').append(note);return}
+ $('room-section-title').textContent=activeView==='outside'?'Outside':'Rooms';
+ if(activeView==='outside'){renderOutside();return}
 
  const primaryIDs=new Set(['primary-bedroom','primary-closet','primary-bath']);
  let primaryGroup=null;
