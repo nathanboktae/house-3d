@@ -13,3 +13,5 @@
 .room-bulbs{display:flex;gap:5px;justify-content:center}.room-device{display:flex;flex-direction:column;align-items:center;max-width:72px}.room-device span{display:none;font-size:9px;text-align:center;background:#122027df;padding:2px 4px;border-radius:4px}.top-view .room-device span{display:block}.device-toggle{display:block;width:100%;margin-top:8px;text-align:left}.device-toggle.on{border-color:#d5ac6d;color:#ffdb95}
 
 .room-label.passive{cursor:default;border:1px solid #ffffff35;border-radius:8px;color:#e6edef;pointer-events:none}
+
+.connection-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;flex-shrink:0;color:#ed8585}.connection-icon[data-state=connected]{color:#86d99a}.connection-icon[data-state=connecting]{color:#f0c565}.connection-slash{display:none}.connection-icon[data-state=disconnected] .connection-slash{display:block}
