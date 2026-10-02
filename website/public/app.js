@@ -182,7 +182,14 @@ $('demo').onclick=()=>setMode('demo');$('live').onclick=()=>setMode('live');
 const labels={not_configured:'Demo · no saved token',connecting:'Connecting to your home',connected:'Your home is connected',auth_failed:'Token rejected · open settings',disconnected:'Home offline · reconnecting',permission_denied:'Home Assistant denied access',connection_error:'Connection failed · open settings',protocol_error:'Connection error · open settings'};
 function receiveState(next){snapshot=next;if($('setup').open&&snapshot.status!=='not_configured')$('connection-result').textContent=labels[snapshot.status]||snapshot.status;$('connection').textContent=labels[snapshot.status]||snapshot.status;$('connection').classList.toggle('online',snapshot.status==='connected');renderRooms();if(document.activeElement!==$('entities'))renderEntities();updateVisuals()}
 const homeAssistant=new HomeAssistant(receiveState);
-function restoreConnection(){try{homeAssistant.start(loadConnection(localStorage))}catch{homeAssistant.stop();notify('Browser storage is unavailable or the saved connection is invalid. Open Home Assistant settings.')}}
+function restoreConnection(){
+ try{
+  const config=loadConnection(localStorage);
+  // Restore real controls with the saved connection; never silently fall back to demo on a connection failure.
+  setMode(config.token?'live':'demo');
+  homeAssistant.start(config);
+ }catch{homeAssistant.stop();notify('Browser storage is unavailable or the saved connection is invalid. Open Home Assistant settings.')}
+}
 function refreshSettings(){
  try{const saved=loadConnection(localStorage);$('ha-url').value=saved.url;$('ha-token').value='';$('ha-token').placeholder=saved.token?'Token saved · leave blank to keep it':'Paste a long-lived access token';$('token-state').textContent=saved.token?'A token is saved in this browser.':'No token saved yet.'}
  catch{$('ha-url').value=DEFAULT_HA_URL;$('token-state').textContent='Browser storage is unavailable.'}
