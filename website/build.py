@@ -4,7 +4,7 @@ import shutil
 
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / 'dist'
-PUBLIC_FILES = ('index.html', 'style.css', 'app.js', 'rooms.mjs', 'room-map.mjs', 'ha.mjs')
+PUBLIC_FILES = ('index.html', 'style.css', 'app.js', 'rooms.mjs', 'room-map.mjs', 'ha.mjs', 'house-aerial-cropped.png')
 
 def build():
     three = ROOT.parent / 'matterport-house/scripts/node_modules/three'

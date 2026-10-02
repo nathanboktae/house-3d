@@ -140,7 +140,7 @@ for(const [id,view] of [['orbit','all'],['main-floor','upper'],['basement','lowe
 $('aerial-photo').onerror=()=>{$('aerial-error').hidden=false};
 function renderOutside(){
  $('outdoor-controls').replaceChildren();$('outdoor-markers').replaceChildren();
- const positions={'light.deck_light':[80,70],'light.backyard_cam_floodlight':[85,29],'light.front_door':[42,51]};
+ const positions={'light.deck_light':[83,74],'light.backyard_cam_floodlight':[87,28],'light.front_door':[38,53]};
  for(const [id,name] of outdoorLights){
   const card=document.createElement('div');card.className='room';const heading=document.createElement('h3');heading.textContent=name;card.append(heading);
   if(mode==='live'&&snapshot.entities.some(e=>e.id===id)){

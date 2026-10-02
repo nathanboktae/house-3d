@@ -106,6 +106,6 @@ The October 2 inventory refresh added Living Room and Kitchen East/West to the d
 
 ## View navigation and Outside
 
-The view pills switch directly between Dollhouse (all floors, orbit), Main Floor (top-down), Basement (top-down), and Outside. Outside uses Nathan’s supplied Redfin/NWMLS aerial photo, loaded directly from its CDN; it therefore requires access to that external image. A load error leaves the outdoor controls available. The photo is not included in the static build.
+The view pills switch directly between Dollhouse (all floors, orbit), Main Floor (top-down), Basement (top-down), and Outside. Outside uses Nathan’s supplied cropped Redfin/NWMLS aerial photo, bundled as `house-aerial-cropped.png` in the static build. No external image request is needed. A load error leaves the outdoor controls available.
 
 Outdoor controls target `light.deck_light`, `light.backyard_cam_floodlight`, and `light.front_door` individually. Their markers sit approximately at the deck, backyard, and front entry; these are illustrative placements, not measured fixture coordinates. They follow Live mode’s connection, availability, and pending-command handling. Demo mode does not operate outdoor lights.
