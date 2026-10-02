@@ -24,3 +24,5 @@
 .aerial-map{width:min(100%,calc((100dvh - 320px)*1.342));margin:16px auto}.outside-intro h2{font-size:24px}.outside-intro .note{margin-bottom:0}@media(max-width:850px){.aerial-map{width:100%}}
 
 .light-control{margin-top:12px}.light-control .room-head{min-height:22px}.light-control .toggle{margin-left:auto;flex-shrink:0}.light-control input[type=range]{width:100%;accent-color:#dbb77d;margin:12px 0 0}.light-control+.light-control{padding-top:12px;border-top:1px solid #ffffff10}#mode-note:empty{display:none}
+
+.room{cursor:default}

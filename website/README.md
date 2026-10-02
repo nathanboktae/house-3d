@@ -1,6 +1,6 @@
 # Nathan’s Home
 
-A backend-free 3D home viewer with editable room lighting regions and direct Home Assistant updates. It runs on GitHub Pages or any HTTPS static host. The GLB is unchanged. A single compact toggle-and-slider interface controls individual Home Assistant devices directly; there is no demo/live mode switch.
+A backend-free 3D home viewer with fixed room lighting regions and direct Home Assistant updates. It runs on GitHub Pages or any HTTPS static host. The GLB is unchanged. A single compact toggle-and-slider interface controls individual Home Assistant devices directly; there is no demo/live mode switch.
 
 ## Run locally
 
@@ -26,7 +26,7 @@ Deploy **only `website/dist/`**. The allowlisted build includes the frontend, pi
 1. Open **Home Assistant settings** in the website.
 2. Confirm the Home Assistant HTTPS URL (Nathan’s Nabu Casa instance is prefilled).
 3. Paste a long-lived access token into **HA_TOKEN**, then click **Save & Connect**. Create a token in your Home Assistant profile if needed.
-4. Use the room toggles, or edit a room to choose its light/switch entities.
+4. Use the room toggles and dimmers; devices are preconfigured.
 
 The browser stores the token under local-storage key `HA_TOKEN` and the selected origin under `HA_URL`. With a saved token, the page automatically reconnects on reload. Network interruptions reconnect automatically; connection failures disable controls. Leaving the token field empty preserves the saved token only when the instance URL is unchanged. Changing the URL requires supplying a token for that instance. **Forget token** closes the connection and deletes those two storage keys; it does not revoke the credential in Home Assistant. Room maps remain saved separately. The former server `.env` is no longer read or needed.
 
@@ -65,20 +65,11 @@ The repository includes `.github/workflows/pages.yml`, triggered **manually** wi
 
 The workflow installs the exact pinned viewer dependencies, runs the browser-client tests, builds and checks `website/dist`, and deploys that artifact using the official Pages actions. It does not use a GitHub secret containing `HA_TOKEN`; each visitor supplies a token locally in their own browser. It does not deploy on every push. This workflow has been prepared but has not been run or published from this task. GitHub’s [custom Pages workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages) explains repository setup.
 
-## Map rooms
+## Fixed room map
 
-The default map contains Nathan’s 19 named rooms, traced as polygon footprints from the numbered floor images. M12 and B6 share one Stairway spanning both floors. B8 is Basement Hallway. Click an in-scene label or sidebar card to select its room. **Main Floor** and **Basement** filter the scan, labels, and sidebar; Dollhouse shows main-floor labels so basement names do not obscure the floor above. The Labels checkbox hides labels.
+The site uses the checked-in `website/public/room-map.mjs` for names, footprints, and entity mappings. Room editing, adding, drawing, importing, exporting, and reset controls have been removed. Legacy room maps in local storage are left untouched but no longer loaded. Home Assistant credentials still persist normally.
 
-The map matches 16 Home Assistant lights across 14 rooms. Den combines `light.den` and `light.media`. Primary Bath uses `light.primary_vanity`; Kitchen uses `light.kitchen_east_lights` and `light.kitchen_west_light`; Living Room uses `light.living_room`. Upper Hallway, Stairway, Basement Bathroom, Storage Room, and Basement Hallway have no mapped lights and remain neutral. The exterior `light.front_door` is mapped in Outside. Entity matches were checked against the read-only inventory; no HA area, device, or configuration was changed.
-
-- Expand **Edit selected room** to adjust the name, bounds, and mapped light/switch entities.
-- Changing bounds scales the existing polygon and its label. Height bounds keep lighting on the correct floor; the approximate floor split is Y = -0.15 m.
-- **Draw footprint in top view** replaces the selected polygon with a rectangle: click two opposite corners; Escape cancels.
-- Toggles control individual devices. Sliders appear only for dimmable lights and send brightness when released.
-
-Up to 32 regions with 3–16 polygon vertices each are supported. Polygon points are editable in exported JSON (`footprint` contains world X/Z pairs). Older rectangular maps remain supported. Avoid overlaps, which compound shading. Concave footprints keep areas such as Storage Room from spilling into the stairwell. Boundaries are approximate traces, not surveyed walls.
-
-Mapping (including legacy demo fields retained for compatibility) persists in local storage (`house-live-rooms-v2`). **Export room map** creates a JSON backup; **Import map** validates and restores it. Untouched old draft regions automatically upgrade to the named map; customized legacy maps are preserved. **Use labeled room map** loads the confirmed defaults and backs up the previous map under `house-live-rooms-backup`. Maps are specific to the browser origin and are not synced between devices.
+The 19-room map includes one shared Stairway for M12/B6 and the combined Primary lights section. Main Floor and Basement filter the scan and sidebar. To change the fixed setup, edit the source map and rebuild the site.
 
 Any mapped entity known to be on illuminates the room, using the brightest known light's brightness. Switches use full brightness. If no mapped entity is known on but any is missing/unavailable, the room remains neutral and is labeled unknown. All-known-off rooms dim to 18% rather than disappearing. This intentionally visualizes state; it is not a physical light simulation.
 
@@ -102,7 +93,6 @@ Room tests also cover the confirmed map, floor filtering, concave footprints, pr
 
 Choose **Main Floor** or **Basement**. Click a sun/light icon to immediately turn that individual device on or off. Rooms with multiple devices show a separate labeled icon for each. Each command targets exactly one available entity; entities advertising group members are disabled. The sidebar uses compact toggles with gold sliders for dimmable devices. On/off-only lights and switches have no slider. Brightness is sent on release using [Home Assistant light actions](https://www.home-assistant.io/integrations/light/); zero turns the light off. No control dialog is shown. The UI reports failures and does not optimistically pretend a light changed.
 
-The October 2 inventory refresh added Living Room and Kitchen East/West to the default map. Existing custom browser maps are preserved: export a backup and select **Use labeled room map** to load the refreshed defaults, or edit those rooms manually. The old screenshot’s three draft regions are not the current 19-room map. No real devices were operated during development verification.
 
 ## View navigation and Outside
 
