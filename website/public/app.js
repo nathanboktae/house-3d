@@ -29,6 +29,12 @@ async function controlEntity(id){
 function controlRoom(room){
  room.demo=room.demo>0?0:1;save();renderRooms();updateVisuals();
 }
+function visibleDevices(room){
+ return room.entities.filter(id=>{
+  const entity=snapshot.entities.find(e=>e.id===id);
+  return mode==='demo'&&snapshot.status!=='connected' ? true : !!entity&&!entity.members?.length;
+ });
+}
 function deviceButton(id,icon=false){
  const entity=snapshot.entities.find(e=>e.id===id),button=document.createElement('button');
  const name=entity?.name||id.replace(/^(light|switch)\./,'').replaceAll('_',' ');
@@ -43,16 +49,17 @@ function selectRoom(id){selected=id;renderRooms();renderEditor();updateVisuals()
 function renderLabels(){
  labelLayer.replaceChildren();roomLabels=[];
  for(const room of rooms.filter(r=>visibleOnFloor(r,$('floor').value,true))){
-  const button=document.createElement('button');button.className='room-label'+(room.id===selected?' selected':'');const name=document.createElement('span');name.textContent=room.name;button.append(name);button.onclick=()=>selectRoom(room.id);
+  const devices=visibleDevices(room);
+  const button=document.createElement(devices.length?'button':'span');button.className='room-label'+(!devices.length?' passive':'')+(room.id===selected?' selected':'');const name=document.createElement('span');name.textContent=room.name;button.append(name);if(devices.length)button.onclick=()=>selectRoom(room.id);
   const bulbs=document.createElement('div');bulbs.className='room-bulbs';
-  if(mode==='demo'){
+  if(mode==='demo'&&devices.length){
    const bulb=document.createElement('button');bulb.className='room-bulb'+(room.demo>0?' on':'');bulb.textContent='☀';bulb.setAttribute('aria-label',`Preview ${room.name} lights`);bulb.title='Demo only';bulb.onclick=e=>{e.stopPropagation();controlRoom(room)};bulbs.append(bulb);
-  }else for(const id of room.entities){
+  }else if(mode==='live')for(const id of devices){
    const item=document.createElement('div');item.className='room-device';const bulb=deviceButton(id,true);item.append(bulb);
-   if(room.entities.length>1){const label=document.createElement('span');label.textContent=snapshot.entities.find(e=>e.id===id)?.name||id.replace(/^(light|switch)\./,'').replaceAll('_',' ');item.append(label)}
+   if(devices.length>1){const label=document.createElement('span');label.textContent=snapshot.entities.find(e=>e.id===id)?.name||id.replace(/^(light|switch)\./,'').replaceAll('_',' ');item.append(label)}
    bulbs.append(item);
   }
-  const wrapper=document.createElement('div');wrapper.className='room-marker';wrapper.append(button,bulbs);labelLayer.append(wrapper);roomLabels.push({room,button:wrapper});
+  const wrapper=document.createElement('div');wrapper.className='room-marker';wrapper.append(button);if(bulbs.childElementCount)wrapper.append(bulbs);labelLayer.append(wrapper);roomLabels.push({room,button:wrapper});
  }
 }
 function positionLabels(){
@@ -125,11 +132,12 @@ $('floor').onchange=()=>{
 function renderRooms(){
  $('rooms').replaceChildren();renderLabels();
  for(const room of rooms.filter(r=>visibleOnFloor(r,$('floor').value))){
+  const devices=visibleDevices(room);
   const state=roomState(room,mode,snapshot),card=document.createElement('div');card.className='room'+(selected===room.id?' selected':'');
   const head=document.createElement('div');head.className='room-head';const text=document.createElement('div'),title=document.createElement('span'),sub=document.createElement('small');title.className='room-name';title.textContent=room.name;sub.textContent=[room.references?.join('/'),state.label].filter(Boolean).join(' · ');text.append(title,sub);head.append(text);
-  const button=document.createElement('button');button.className='toggle'+(state.level>0?' on':'');button.setAttribute('aria-label',`Toggle demo ${room.name}`);button.setAttribute('aria-pressed',state.level>0);button.disabled=mode==='live'&&(snapshot.status!=='connected'||!room.entities.length);button.setAttribute('aria-label',`${mode==='demo'?'Toggle demo':'Control'} ${room.name}`);button.onclick=e=>{e.stopPropagation();controlRoom(room)};if(mode==='demo')head.append(button);card.append(head);
-  if(mode==='live')for(const id of room.entities)card.append(deviceButton(id));
-  if(mode==='demo'){const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=100;slider.value=room.demo*100;slider.setAttribute('aria-label',`${room.name} demo brightness`);slider.onclick=e=>e.stopPropagation();slider.oninput=()=>{room.demo=+slider.value/100;sub.textContent=room.demo>0?'Demo · on':'Demo · off';button.classList.toggle('on',room.demo>0);button.setAttribute('aria-pressed',room.demo>0);updateVisuals()};slider.onchange=save;card.append(slider)}
+  const button=document.createElement('button');button.className='toggle'+(state.level>0?' on':'');button.setAttribute('aria-label',`Toggle demo ${room.name}`);button.setAttribute('aria-pressed',state.level>0);button.disabled=mode==='live'&&(snapshot.status!=='connected'||!room.entities.length);button.setAttribute('aria-label',`${mode==='demo'?'Toggle demo':'Control'} ${room.name}`);button.onclick=e=>{e.stopPropagation();controlRoom(room)};if(mode==='demo'&&devices.length)head.append(button);card.append(head);
+  if(mode==='live')for(const id of devices)card.append(deviceButton(id));
+  if(mode==='demo'&&devices.length){const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=100;slider.value=room.demo*100;slider.setAttribute('aria-label',`${room.name} demo brightness`);slider.onclick=e=>e.stopPropagation();slider.oninput=()=>{room.demo=+slider.value/100;sub.textContent=room.demo>0?'Demo · on':'Demo · off';button.classList.toggle('on',room.demo>0);button.setAttribute('aria-pressed',room.demo>0);updateVisuals()};slider.onchange=save;card.append(slider)}
   card.onclick=()=>selectRoom(room.id);$('rooms').append(card);
  }
  if(!rooms.length){const p=document.createElement('p');p.className='note';p.textContent='Add a room, draw its footprint, then try the lights.';$('rooms').append(p)}
