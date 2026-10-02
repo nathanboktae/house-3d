@@ -67,7 +67,7 @@ The workflow installs the exact pinned viewer dependencies, runs the browser-cli
 
 ## Map rooms
 
-The default map contains Nathan’s 19 named rooms, traced as polygon footprints from the numbered floor images. M12 and B6 share one Stairway spanning both floors. B8 is Basement Hallway. Click an in-scene label or sidebar card to select its room. **Main Floor** and **Basement** filter the scan, labels, and sidebar; All floors shows main-floor labels so basement names do not obscure the floor above. The Labels checkbox hides labels.
+The default map contains Nathan’s 19 named rooms, traced as polygon footprints from the numbered floor images. M12 and B6 share one Stairway spanning both floors. B8 is Basement Hallway. Click an in-scene label or sidebar card to select its room. **Main Floor** and **Basement** filter the scan, labels, and sidebar; Dollhouse shows main-floor labels so basement names do not obscure the floor above. The Labels checkbox hides labels.
 
 The map matches 16 Home Assistant lights across 14 rooms. Den combines `light.den` and `light.media`. Primary Bath uses `light.primary_vanity`; Kitchen uses `light.kitchen_east_lights` and `light.kitchen_west_light`; Living Room uses `light.living_room`. Upper Hallway, Stairway, Basement Bathroom, Storage Room, and Basement Hallway have no mapped lights and remain neutral in live mode. The exterior `light.front_door` is intentionally unassigned. Entity matches were checked against the read-only inventory; no HA area, device, or configuration was changed.
 
@@ -100,6 +100,12 @@ Room tests also cover the confirmed map, floor filtering, concave footprints, pr
 
 ## Individual light controls
 
-Choose **Top view**, a floor, and **Live home**. Click a sun/light icon to immediately turn that individual device on or off. Rooms with multiple devices show a separate labeled icon for each. Each command targets exactly one available entity; entities advertising group members are disabled. In demo mode the same icon changes shading only. Sidebar live buttons also toggle their individual devices directly. No control dialog is shown. The UI reports failures and does not optimistically pretend a light changed.
+Choose **Main Floor** or **Basement**, then **Live home**. Click a sun/light icon to immediately turn that individual device on or off. Rooms with multiple devices show a separate labeled icon for each. Each command targets exactly one available entity; entities advertising group members are disabled. In demo mode the same icon changes shading only. Sidebar live buttons also toggle their individual devices directly. No control dialog is shown. The UI reports failures and does not optimistically pretend a light changed.
 
 The October 2 inventory refresh added Living Room and Kitchen East/West to the default map. Existing custom browser maps are preserved: export a backup and select **Use labeled room map** to load the refreshed defaults, or edit those rooms manually. The old screenshot’s three draft regions are not the current 19-room map. No real devices were operated during development verification.
+
+## View navigation and Outside
+
+The view pills switch directly between Dollhouse (all floors, orbit), Main Floor (top-down), Basement (top-down), and Outside. Outside uses Nathan’s supplied Redfin/NWMLS aerial photo, loaded directly from its CDN; it therefore requires access to that external image. A load error leaves the outdoor controls available. The photo is not included in the static build.
+
+Outdoor controls target `light.deck_light`, `light.backyard_cam_floodlight`, and `light.front_door` individually. Their markers sit approximately at the deck, backyard, and front entry; these are illustrative placements, not measured fixture coordinates. They follow Live mode’s connection, availability, and pending-command handling. Demo mode does not operate outdoor lights.

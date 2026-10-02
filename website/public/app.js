@@ -10,10 +10,12 @@ function notify(text){$('notice').textContent=text}
 function save(){try{validateRooms(rooms);localStorage.setItem(ROOM_STORAGE_KEY,JSON.stringify(rooms))}catch(e){notify(e.message)}}
 const scene=new THREE.Scene(),renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setClearColor(0,0);stage.append(renderer.domElement);
 const camera=new THREE.PerspectiveCamera(38,1,.1,200),controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.minDistance=4;controls.maxDistance=65;controls.maxPolarAngle=Math.PI*.92;
+let activeView='all';
+const outdoorLights=[['light.deck_light','Deck Light'],['light.backyard_cam_floodlight','Backyard Floodlight'],['light.front_door','Front Door Light']];
 const center=new THREE.Vector3(4.4,1.2,-2.3);
-function orbit(){camera.up.set(0,1,0);camera.position.copy(center).add(new THREE.Vector3(17,16,17));controls.target.copy(center);controls.enableRotate=true;controls.update();$('orbit').classList.add('active');$('top').classList.remove('active')}
-function top(){camera.up.set(0,0,-1);camera.position.copy(center).add(new THREE.Vector3(0,23,.001));controls.target.copy(center);controls.enableRotate=false;controls.update();$('top').classList.add('active');$('orbit').classList.remove('active')}
-$('orbit').onclick=()=>{cancelDraw();orbit()};$('top').onclick=top;orbit();
+function orbit(){camera.up.set(0,1,0);camera.position.copy(center).add(new THREE.Vector3(17,16,17));controls.target.copy(center);controls.enableRotate=true;controls.update()}
+function top(){camera.up.set(0,0,-1);camera.position.copy(center).add(new THREE.Vector3(0,23,.001));controls.target.copy(center);controls.enableRotate=false;controls.update()}
+orbit();
 new ResizeObserver(()=>{const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix()}).observe(stage);
 const uniforms={roomMin:{value:Array.from({length:MAX_ROOMS},()=>new THREE.Vector3())},roomMax:{value:Array.from({length:MAX_ROOMS},()=>new THREE.Vector3())},roomLevel:{value:Array(MAX_ROOMS).fill(-1)},roomCount:{value:0},roomVertexCount:{value:Array(MAX_ROOMS).fill(0)},roomPoints:{value:Array.from({length:MAX_ROOMS*MAX_VERTICES},()=>new THREE.Vector2())}};
 const box=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0xe8bc7a}));box.visible=false;scene.add(box);
@@ -48,7 +50,7 @@ function deviceButton(id,icon=false){
 function selectRoom(id){selected=id;renderRooms();renderEditor();updateVisuals()}
 function renderLabels(){
  labelLayer.replaceChildren();roomLabels=[];
- for(const room of rooms.filter(r=>visibleOnFloor(r,$('floor').value,true))){
+ for(const room of rooms.filter(r=>visibleOnFloor(r,activeView,true))){
   const devices=visibleDevices(room);
   const button=document.createElement(devices.length?'button':'span');button.className='room-label'+(!devices.length?' passive':'')+(room.id===selected?' selected':'');const name=document.createElement('span');name.textContent=room.name;button.append(name);if(devices.length)button.onclick=()=>selectRoom(room.id);
   const bulbs=document.createElement('div');bulbs.className='room-bulbs';
@@ -63,17 +65,17 @@ function renderLabels(){
  }
 }
 function positionLabels(){
- labelLayer.hidden=drawing||!$('show-labels').checked;
- labelLayer.classList.toggle('top-view',$('top').classList.contains('active'));
+ labelLayer.hidden=activeView==='outside'||drawing||!$('show-labels').checked;
+ labelLayer.classList.toggle('top-view',['upper','lower'].includes(activeView));
  const occupied=[];
  for(const {room,button} of roomLabels){
   const anchor=room.labelPosition?[...room.labelPosition]:[(room.min[0]+room.max[0])/2,room.min[1]+.15,(room.min[2]+room.max[2])/2];
-  if(room.floor==='both')anchor[1]=$('floor').value==='lower'?-2.5:0;
+  if(room.floor==='both')anchor[1]=activeView==='lower'?-2.5:0;
   const p=new THREE.Vector3(...anchor).project(camera);
   button.hidden=p.z < -1||p.z > 1||Math.abs(p.x)>1||Math.abs(p.y)>1;
   const x=(p.x+1)*stage.clientWidth/2,y=(1-p.y)*stage.clientHeight/2,w=button.offsetWidth,h=button.offsetHeight;
   let offset=0;
-  for(const dy of ($('top').classList.contains('active')?[0]:[0,-h-5,h+5,-2*(h+5),2*(h+5)])){
+  for(const dy of (['upper','lower'].includes(activeView)?[0]:[0,-h-5,h+5,-2*(h+5),2*(h+5)])){
    offset=dy;
    if(!occupied.some(r=>Math.abs(x-r.x)<(w+r.w)/2+3&&Math.abs(y+dy-r.y)<(h+r.h)/2+3))break;
   }
@@ -84,7 +86,7 @@ function positionLabels(){
 function updateVisuals(){
  uniforms.roomCount.value=rooms.length;
  rooms.forEach((room,i)=>{uniforms.roomMin.value[i].fromArray(room.min);uniforms.roomMax.value[i].fromArray(room.max);const state=roomState(room,mode,snapshot);uniforms.roomLevel.value[i]=state.level===null?-1:state.level;const points=footprintOf(room);uniforms.roomVertexCount.value[i]=points.length;points.forEach((p,j)=>uniforms.roomPoints.value[i*MAX_VERTICES+j].fromArray(p))});
- const r=rooms.find(r=>r.id===selected);box.visible=!!r&&$('editor').open&&visibleOnFloor(r,$('floor').value);
+ const r=rooms.find(r=>r.id===selected);box.visible=!!r&&$('editor').open&&visibleOnFloor(r,activeView);
  if(r){const vertices=[],points=footprintOf(r);points.forEach(([x,z],i)=>{const [nx,nz]=points[(i+1)%points.length];for(const y of [r.min[1],r.max[1]])vertices.push(x,y,z,nx,y,nz);vertices.push(x,r.min[1],z,x,r.max[1],z)});box.geometry.dispose();box.geometry=new THREE.BufferGeometry();box.geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3))}
 }
 new GLTFLoader().load('./model/house.glb',gltf=>{
@@ -124,16 +126,38 @@ new GLTFLoader().load('./model/house.glb',gltf=>{
   material.customProgramCacheKey=()=> 'house-room-polygons-v2';material.needsUpdate=true;
  })});$('loading').hidden=true;updateVisuals();
 },event=>{if(event.total)$('loading').textContent=`Loading Nathan’s home… ${Math.round(event.loaded/event.total*100)}%`},()=>{$('loading').textContent='Could not load the model. Check that the deployed site includes model/house.glb.'});
-$('floor').onchange=()=>{
- const floor=$('floor').value;
- renderer.clippingPlanes=floor==='all'?[]:floor==='upper'?[new THREE.Plane(new THREE.Vector3(0,1,0),.15)]:[new THREE.Plane(new THREE.Vector3(0,-1,0),-.15)];
- renderRooms();updateVisuals();
-};
+function setView(view){
+ cancelDraw();activeView=view;
+ for(const [id,value] of [['orbit','all'],['main-floor','upper'],['basement','lower'],['outside','outside']]){const button=$(id);button.classList.toggle('active',value===view);button.setAttribute('aria-pressed',value===view)}
+ renderer.clippingPlanes=['all','outside'].includes(view)?[]:view==='upper'?[new THREE.Plane(new THREE.Vector3(0,1,0),.15)]:[new THREE.Plane(new THREE.Vector3(0,-1,0),-.15)];
+ renderer.domElement.hidden=view==='outside';$('outside-view').hidden=view!=='outside';
+ $('show-labels').closest('label').hidden=view==='outside';
+ document.querySelector('.view-caption').hidden=view==='outside';
+ if(view==='all')orbit();else if(view!=='outside')top();
+ renderRooms();renderEditor();updateVisuals();
+}
+for(const [id,view] of [['orbit','all'],['main-floor','upper'],['basement','lower'],['outside','outside']])$(id).onclick=()=>setView(view);
+$('aerial-photo').onerror=()=>{$('aerial-error').hidden=false};
+function renderOutside(){
+ $('outdoor-controls').replaceChildren();$('outdoor-markers').replaceChildren();
+ const positions={'light.deck_light':[80,70],'light.backyard_cam_floodlight':[85,29],'light.front_door':[42,51]};
+ for(const [id,name] of outdoorLights){
+  const card=document.createElement('div');card.className='room';const heading=document.createElement('h3');heading.textContent=name;card.append(heading);
+  if(mode==='live'&&snapshot.entities.some(e=>e.id===id)){
+   card.append(deviceButton(id));const marker=deviceButton(id);marker.classList.add('outdoor-marker');marker.textContent=`☀ ${name}`;marker.style.left=positions[id][0]+'%';marker.style.top=positions[id][1]+'%';$('outdoor-markers').append(marker);
+  }
+  else {const note=document.createElement('p');note.className='note';note.textContent=mode==='demo'?'Choose Live home to control this light.':snapshot.status==='connected'?'Device not found.':'Waiting for Home Assistant connection.';card.append(note)}
+  $('outdoor-controls').append(card);
+ }
+}
 function renderRooms(){
  $('rooms').replaceChildren();renderLabels();
+ $('add').hidden=activeView==='outside';
+ if(activeView==='outside'){renderOutside();const note=document.createElement('p');note.className='note';note.textContent='Outdoor lights are shown in the Outside view.';$('rooms').append(note);return}
+
  const primaryIDs=new Set(['primary-bedroom','primary-closet','primary-bath']);
  let primaryGroup=null;
- for(const room of rooms.filter(r=>visibleOnFloor(r,$('floor').value))){
+ for(const room of rooms.filter(r=>visibleOnFloor(r,activeView))){
   const devices=visibleDevices(room);
   const state=roomState(room,mode,snapshot),card=document.createElement('div');card.className='room'+(selected===room.id?' selected':'');
   const head=document.createElement('div');head.className='room-head';const text=document.createElement('div'),title=document.createElement('span'),sub=document.createElement('small');title.className='room-name';title.textContent=room.id==='primary-bath'?'Primary Vanity / Bath':room.name;sub.textContent=[room.references?.join('/'),state.label].filter(Boolean).join(' · ');text.append(title,sub);head.append(text);
@@ -157,7 +181,7 @@ function renderEntities(){
  if(!available.size){const option=document.createElement('option');option.textContent='Connect Home Assistant to list lights';option.disabled=true;$('entities').append(option)}
 }
 function renderEditor(){
- const r=rooms.find(r=>r.id===selected);$('editor').hidden=!r;if(!r)return;
+ const r=rooms.find(r=>r.id===selected);$('editor').hidden=!r||activeView==='outside';if(!r)return;
  $('room-name').value=r.name;$('bounds').replaceChildren();
  for(let axis=0;axis<3;axis++)for(const end of ['min','max']){
   const label=document.createElement('label');label.textContent=`${['X','Height (Y)','Z'][axis]} ${end}`;
@@ -169,9 +193,9 @@ function renderEditor(){
 $('room-name').onchange=()=>{const r=rooms.find(r=>r.id===selected);if(!r)return;const name=$('room-name').value.trim();if(!name){$('room-name').value=r.name;return}r.name=name;save();renderRooms()};
 $('entities').onchange=()=>{const r=rooms.find(r=>r.id===selected);if(r){r.entities=[...$('entities').selectedOptions].map(o=>o.value);save();renderRooms();updateVisuals()}};
 $('editor').ontoggle=updateVisuals;
-$('add').onclick=()=>{if(rooms.length>=MAX_ROOMS)return;const lower=$('floor').value==='lower';const room={id:crypto.randomUUID(),name:'New room',min:[2,lower?-2.8:-.15,-3],max:[5,lower?-.15:5.8,0],entities:[],demo:1};rooms.push(room);selected=room.id;save();renderRooms();renderEditor();$('editor').open=true;updateVisuals();startDraw()};
+$('add').onclick=()=>{if(rooms.length>=MAX_ROOMS)return;const lower=activeView==='lower';const room={id:crypto.randomUUID(),name:'New room',min:[2,lower?-2.8:-.15,-3],max:[5,lower?-.15:5.8,0],entities:[],demo:1};rooms.push(room);selected=room.id;save();renderRooms();renderEditor();$('editor').open=true;updateVisuals();startDraw()};
 $('delete').onclick=()=>{rooms=rooms.filter(r=>r.id!==selected);selected=rooms[0]?.id;cancelDraw();save();renderRooms();renderEditor();updateVisuals()};
-function startDraw(){if(!selected)return;top();drawing=true;drawStart=null;controls.enabled=false;$('draw-hint').hidden=false;$('draw-hint').textContent='Click two opposite room corners. Esc cancels.'}
+function startDraw(){if(!selected)return;const room=rooms.find(r=>r.id===selected);setView(room.max[1]<=-.15?'lower':'upper');top();drawing=true;drawStart=null;controls.enabled=false;$('draw-hint').hidden=false;$('draw-hint').textContent='Click two opposite room corners. Esc cancels.'}
 function cancelDraw(){drawing=false;drawStart=null;controls.enabled=true;$('draw-hint').hidden=true}
 $('draw').onclick=startDraw;addEventListener('keydown',e=>{if(e.key==='Escape')cancelDraw()});
 renderer.domElement.addEventListener('pointerdown',e=>{
