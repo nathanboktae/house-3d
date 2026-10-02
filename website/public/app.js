@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {defaults,validateRooms,roomState,MAX_ROOMS,MAX_VERTICES,ROOM_STORAGE_KEY,loadRoomMap,footprintOf,visibleOnFloor,resizeRoom} from './rooms.mjs?v=controls2';
-import {HomeAssistant,DEFAULT_HA_URL,TOKEN_KEY,URL_KEY,loadConnection,saveConnection,forgetConnection,normalizeURL,testConnection} from './ha.mjs?v=controls1';
+import {HomeAssistant,DEFAULT_HA_URL,TOKEN_KEY,URL_KEY,loadConnection,saveConnection,forgetConnection,normalizeURL,testConnection} from './ha.mjs?v=unified1';
 const $=id=>document.getElementById(id),stage=$('stage');
-let rooms=structuredClone(defaults),selected=rooms[0].id,mode='demo',snapshot={status:'not_configured',entities:[]},drawStart=null,drawing=false,model=null;
+let rooms=structuredClone(defaults),selected=rooms[0].id,mode='live',snapshot={status:'not_configured',entities:[]},drawStart=null,drawing=false,model=null;
 try{const loaded=loadRoomMap(localStorage);rooms=loaded.rooms;selected=rooms[0]?.id;if(loaded.preserved)notify('Your custom map was preserved. Use “Use labeled room map” below to load the confirmed rooms.')}catch{notify('Saved mapping could not be read. Using the confirmed room map.')}
 function notify(text){$('notice').textContent=text}
 function save(){try{validateRooms(rooms);localStorage.setItem(ROOM_STORAGE_KEY,JSON.stringify(rooms))}catch(e){notify(e.message)}}
@@ -22,20 +22,26 @@ const box=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicM
 const labelLayer=document.createElement('div');labelLayer.className='room-labels';stage.append(labelLayer);
 let roomLabels=[];
 const pendingControls=new Set();
-async function controlEntity(id){
+async function controlEntity(id,brightness){
  const entity=snapshot.entities.find(e=>e.id===id);if(!entity||pendingControls.has(id))return;
  pendingControls.add(id);renderRooms();
- try{await homeAssistant.setEntity(id,entity.state!=='on');notify('Command accepted. Waiting for the device state.')}catch(error){notify(error.message)}
+ try{await homeAssistant.setEntity(id,entity.state!=='on',brightness);notify('Command accepted. Waiting for the device state.')}catch(error){notify(error.message)}
  finally{pendingControls.delete(id);renderRooms()}
 }
-function controlRoom(room){
- room.demo=room.demo>0?0:1;save();renderRooms();updateVisuals();
-}
-function visibleDevices(room){
- return room.entities.filter(id=>{
-  const entity=snapshot.entities.find(e=>e.id===id);
-  return mode==='demo'&&snapshot.status!=='connected' ? true : !!entity&&!entity.members?.length;
- });
+function visibleDevices(room){return room.entities.filter(id=>{const entity=snapshot.entities.find(e=>e.id===id);return !!entity&&!entity.members?.length})}
+let adjustingBrightness=false;
+function appendDeviceControl(container,id,title){
+ const entity=snapshot.entities.find(e=>e.id===id);if(!entity)return;
+ const row=document.createElement('div');row.className='light-control';
+ const head=document.createElement('div');head.className='room-head';
+ if(title){const name=document.createElement('span');name.className='room-name';name.textContent=title;head.append(name)}
+ const toggle=deviceButton(id);toggle.className='toggle'+(entity.state==='on'?' on':'');toggle.textContent='';head.append(toggle);row.append(head);
+ if(entity.dimmable){
+  const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=100;slider.step=1;slider.value=entity.state==='off'?0:Math.round((entity.brightness??255)/255*100);slider.disabled=toggle.disabled;slider.setAttribute('aria-label',`${entity.name} brightness`);slider.title=`${slider.value}%`;
+  slider.onclick=e=>e.stopPropagation();slider.oninput=()=>{adjustingBrightness=true;slider.title=`${slider.value}%`};
+  slider.onchange=()=>{adjustingBrightness=false;controlEntity(id,Number(slider.value))};slider.onblur=()=>{if(adjustingBrightness){adjustingBrightness=false;renderRooms()}};row.append(slider);
+ }
+ container.append(row);return toggle;
 }
 function deviceButton(id,icon=false){
  const entity=snapshot.entities.find(e=>e.id===id),button=document.createElement('button');
@@ -54,9 +60,7 @@ function renderLabels(){
   const devices=visibleDevices(room);
   const button=document.createElement(devices.length?'button':'span');button.className='room-label'+(!devices.length?' passive':'')+(room.id===selected?' selected':'');const name=document.createElement('span');name.textContent=room.name;button.append(name);if(devices.length)button.onclick=()=>selectRoom(room.id);
   const bulbs=document.createElement('div');bulbs.className='room-bulbs';
-  if(mode==='demo'&&devices.length){
-   const bulb=document.createElement('button');bulb.className='room-bulb'+(room.demo>0?' on':'');bulb.textContent='☀';bulb.setAttribute('aria-label',`Preview ${room.name} lights`);bulb.title='Demo only';bulb.onclick=e=>{e.stopPropagation();controlRoom(room)};bulbs.append(bulb);
-  }else if(mode==='live')for(const id of devices){
+  for(const id of devices){
    const item=document.createElement('div');item.className='room-device';const bulb=deviceButton(id,true);item.append(bulb);
    if(devices.length>1){const label=document.createElement('span');label.textContent=snapshot.entities.find(e=>e.id===id)?.name||id.replace(/^(light|switch)\./,'').replaceAll('_',' ');item.append(label)}
    bulbs.append(item);
@@ -143,14 +147,15 @@ function renderOutside(){
  const positions={'light.deck_light':[83,74],'light.backyard_cam_floodlight':[87,28],'light.front_door':[38,53]};
  for(const [id,name] of outdoorLights){
   const card=document.createElement('div');card.className='room';const heading=document.createElement('h3');heading.textContent=name;card.append(heading);
-  if(mode==='live'&&snapshot.entities.some(e=>e.id===id)){
-   card.append(deviceButton(id));const marker=deviceButton(id);marker.classList.add('outdoor-marker');marker.textContent=`☀ ${name}`;marker.style.left=positions[id][0]+'%';marker.style.top=positions[id][1]+'%';$('outdoor-markers').append(marker);
+  if(snapshot.entities.some(e=>e.id===id)){
+   appendDeviceControl(card,id);const marker=deviceButton(id);marker.classList.add('outdoor-marker');marker.textContent=`☀ ${name}`;marker.style.left=positions[id][0]+'%';marker.style.top=positions[id][1]+'%';$('outdoor-markers').append(marker);
   }
-  else {const note=document.createElement('p');note.className='note';note.textContent=mode==='demo'?'Choose Live home to control this light.':snapshot.status==='connected'?'Device not found.':'Waiting for Home Assistant connection.';card.append(note)}
+  else {const note=document.createElement('p');note.className='note';note.textContent=snapshot.status==='connected'?'Device not found.':'Waiting for Home Assistant connection.';card.append(note)}
   $('outdoor-controls').append(card);
  }
 }
 function renderRooms(){
+ if(adjustingBrightness)return;
  $('rooms').replaceChildren();renderLabels();
  $('add').hidden=activeView==='outside';
  if(activeView==='outside'){renderOutside();const note=document.createElement('p');note.className='note';note.textContent='Outdoor lights are shown in the Outside view.';$('rooms').append(note);return}
@@ -161,9 +166,11 @@ function renderRooms(){
   const devices=visibleDevices(room);
   const state=roomState(room,mode,snapshot),card=document.createElement('div');card.className='room'+(selected===room.id?' selected':'');
   const head=document.createElement('div');head.className='room-head';const text=document.createElement('div'),title=document.createElement('span'),sub=document.createElement('small');title.className='room-name';title.textContent=room.id==='primary-bath'?'Primary Vanity / Bath':room.name;sub.textContent=[room.references?.join('/'),state.label].filter(Boolean).join(' · ');text.append(title,sub);head.append(text);
-  const button=document.createElement('button');button.className='toggle'+(state.level>0?' on':'');button.setAttribute('aria-label',`Toggle demo ${room.name}`);button.setAttribute('aria-pressed',state.level>0);button.disabled=mode==='live'&&(snapshot.status!=='connected'||!room.entities.length);button.setAttribute('aria-label',`${mode==='demo'?'Toggle demo':'Control'} ${room.name}`);button.onclick=e=>{e.stopPropagation();controlRoom(room)};if(mode==='demo'&&devices.length)head.append(button);card.append(head);
-  if(mode==='live')for(const id of devices)card.append(deviceButton(id));
-  if(mode==='demo'&&devices.length){const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=100;slider.value=room.demo*100;slider.setAttribute('aria-label',`${room.name} demo brightness`);slider.onclick=e=>e.stopPropagation();slider.oninput=()=>{room.demo=+slider.value/100;sub.textContent=room.demo>0?'Demo · on':'Demo · off';button.classList.toggle('on',room.demo>0);button.setAttribute('aria-pressed',room.demo>0);updateVisuals()};slider.onchange=save;card.append(slider)}
+  card.append(head);
+  if(devices.length===1){
+   const holder=document.createElement('div');const toggle=appendDeviceControl(holder,devices[0]);
+   head.append(toggle);const slider=holder.querySelector('input');if(slider)card.append(slider);
+  }else for(const id of devices)appendDeviceControl(card,id,snapshot.entities.find(e=>e.id===id)?.name||id);
   card.onclick=()=>selectRoom(room.id);
   if(primaryIDs.has(room.id)){
    if(!primaryGroup){primaryGroup=document.createElement('section');primaryGroup.className='primary-group';primaryGroup.setAttribute('aria-label','Primary lights');const heading=document.createElement('h3');heading.textContent='Primary lights';primaryGroup.append(heading);$('rooms').append(primaryGroup)}
@@ -207,16 +214,12 @@ renderer.domElement.addEventListener('pointerdown',e=>{
  for(const axis of [0,2]){r.min[axis]=Math.round(Math.min(hit.getComponent(axis),drawStart.getComponent(axis))*100)/100;r.max[axis]=Math.round(Math.max(hit.getComponent(axis),drawStart.getComponent(axis))*100)/100}
  delete r.footprint;delete r.labelPosition;cancelDraw();save();renderRooms();renderEditor();updateVisuals();notify('Footprint saved. Adjust height bounds if needed.');
 });
-function setMode(next){mode=next;$('demo').classList.toggle('active',mode==='demo');$('live').classList.toggle('active',mode==='live');$('mode-note').textContent=mode==='demo'?'Demo controls only change this view.':'Live controls affect real devices. Click a light to toggle only that device.';renderRooms();updateVisuals()}
-$('demo').onclick=()=>setMode('demo');$('live').onclick=()=>setMode('live');
-const labels={not_configured:'Demo · no saved token',connecting:'Connecting to your home',connected:'Your home is connected',auth_failed:'Token rejected · open settings',disconnected:'Home offline · reconnecting',permission_denied:'Home Assistant denied access',connection_error:'Connection failed · open settings',protocol_error:'Connection error · open settings'};
-function receiveState(next){snapshot=next;if($('setup').open&&snapshot.status!=='not_configured')$('connection-result').textContent=labels[snapshot.status]||snapshot.status;const indicator=$('connection'),description=labels[snapshot.status]||snapshot.status;indicator.dataset.state=snapshot.status==='connected'?'connected':['connecting','disconnected'].includes(snapshot.status)?'connecting':'disconnected';indicator.title=description;indicator.setAttribute('aria-label',description);renderRooms();if(document.activeElement!==$('entities'))renderEntities();updateVisuals()}
+const labels={not_configured:'Disconnected · no saved token',connecting:'Connecting to your home',connected:'Your home is connected',auth_failed:'Token rejected · open settings',disconnected:'Home offline · reconnecting',permission_denied:'Home Assistant denied access',connection_error:'Connection failed · open settings',protocol_error:'Connection error · open settings'};
+function receiveState(next){snapshot=next;$('mode-note').textContent=next.status==='connected'?'':next.status==='not_configured'?'Connect Home Assistant in settings to control your lights.':'Light controls reconnect automatically.';if($('setup').open&&snapshot.status!=='not_configured')$('connection-result').textContent=labels[snapshot.status]||snapshot.status;const indicator=$('connection'),description=labels[snapshot.status]||snapshot.status;indicator.dataset.state=snapshot.status==='connected'?'connected':['connecting','disconnected'].includes(snapshot.status)?'connecting':'disconnected';indicator.title=description;indicator.setAttribute('aria-label',description);renderRooms();if(document.activeElement!==$('entities'))renderEntities();updateVisuals()}
 const homeAssistant=new HomeAssistant(receiveState);
 function restoreConnection(){
  try{
   const config=loadConnection(localStorage);
-  // Restore real controls with the saved connection; never silently fall back to demo on a connection failure.
-  setMode(config.token?'live':'demo');
   homeAssistant.start(config);
  }catch{homeAssistant.stop();notify('Browser storage is unavailable or the saved connection is invalid. Open Home Assistant settings.')}
 }
@@ -233,12 +236,12 @@ $('connection-form').onsubmit=e=>{
   const url=normalizeURL($('ha-url').value.trim());let saved={url:'',token:''};try{saved=loadConnection(localStorage)}catch{}
   const token=$('ha-token').value.trim()||(saved.url===url?saved.token:'');
   if(!token)throw Error('Enter a token for this Home Assistant URL.');
-  const config=saveConnection(localStorage,{url,token});homeAssistant.start(config);refreshSettings();setMode('live');$('connection-result').textContent='Saved in this browser. Connecting…';
+  const config=saveConnection(localStorage,{url,token});homeAssistant.start(config);refreshSettings();$('connection-result').textContent='Saved in this browser. Connecting…';
  }catch(error){$('connection-result').textContent=error.message}
 };
 $('forget-token').onclick=()=>{
  homeAssistant.stop();
- try{forgetConnection(localStorage);refreshSettings();$('connection-result').textContent='Token removed from this browser. Revoke it in Home Assistant too if you no longer need it.';setMode('demo')}
+ try{forgetConnection(localStorage);refreshSettings();$('connection-result').textContent='Token removed from this browser. Revoke it in Home Assistant too if you no longer need it.'}
  catch{$('ha-token').value='';$('connection-result').textContent='Disconnected, but storage could not be cleared. Remove HA_TOKEN in your browser’s site settings.'}
 };
 $('test-connection').onclick=async()=>{

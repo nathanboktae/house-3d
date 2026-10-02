@@ -22,3 +22,5 @@
 
 .aerial-map{position:relative;margin-top:20px}.aerial-map img{display:block;width:100%;height:auto;border-radius:12px}.outdoor-marker{position:absolute;transform:translate(-50%,-50%);width:auto;max-width:145px;margin:0;font-size:11px;background:#142127ed;text-align:center;box-shadow:0 2px 8px #0008}#outside-view a{color:#e9c38c}#outdoor-controls{margin-top:14px}.aerial-map .device-toggle.on{background:#69522bea}@media(max-width:500px){.outdoor-marker{max-width:95px;font-size:9px;padding:6px}}
 .aerial-map{width:min(100%,calc((100dvh - 320px)*1.342));margin:16px auto}.outside-intro h2{font-size:24px}.outside-intro .note{margin-bottom:0}@media(max-width:850px){.aerial-map{width:100%}}
+
+.light-control{margin-top:12px}.light-control .room-head{min-height:22px}.light-control .toggle{margin-left:auto;flex-shrink:0}.light-control input[type=range]{width:100%;accent-color:#dbb77d;margin:12px 0 0}.light-control+.light-control{padding-top:12px;border-top:1px solid #ffffff10}#mode-note:empty{display:none}

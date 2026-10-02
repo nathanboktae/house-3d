@@ -57,11 +57,14 @@ export class HomeAssistant {
     this.sendCommand = null;
   }
 
-  setEntity(id, on) {
+  setEntity(id, on, brightness) {
     if (this.status !== 'connected' || !this.sendCommand) return Promise.reject(new Error('Connect Home Assistant first.'));
     const entity = this.entities.get(id);
     if (!/^(light|switch)\.[a-z0-9_]+$/.test(id) || !entity || !['on','off'].includes(entity.state) || entity.members?.length) return Promise.reject(new Error('Choose an available individual light or switch, not a group.'));
-    return this.sendCommand({type:'call_service', domain:id.split('.')[0], service:on?'turn_on':'turn_off', target:{entity_id:id}});
+    if (brightness !== undefined && (!entity.dimmable || !Number.isInteger(brightness) || brightness < 0 || brightness > 100)) return Promise.reject(new Error('Choose a dimmable light and brightness from 0 to 100.'));
+    const command={type:'call_service', domain:id.split('.')[0], service:on?'turn_on':'turn_off', target:{entity_id:id}};
+    if(brightness !== undefined){command.service=brightness===0?'turn_off':'turn_on';if(brightness>0)command.service_data={brightness_pct:brightness};}
+    return this.sendCommand(command);
   }
 
   stop(status = 'not_configured') {
@@ -96,6 +99,7 @@ export class HomeAssistant {
     this.entities.set(id, {
       id, name: String(attrs.friendly_name || id), state: state.state,
       members: Array.isArray(attrs.entity_id) ? attrs.entity_id : [],
+      dimmable: id.startsWith('light.') && Array.isArray(attrs.supported_color_modes) && attrs.supported_color_modes.some(mode=>['brightness','color_temp','hs','xy','rgb','rgbw','rgbww','white'].includes(mode)),
       brightness: Number.isFinite(attrs.brightness) ? attrs.brightness : null,
       updated: state.last_updated || '',
     });

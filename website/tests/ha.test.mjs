@@ -131,3 +131,15 @@ test('command timeout does not retry or invent a device state',async()=>{
  const command=client.setEntity('switch.lamp',true);await assert.rejects(command,/timed out/);
  assert.equal(socket.sent.filter(m=>m.type==='call_service').length,1);assert.equal(client.entities.get('switch.lamp').state,'off');client.stop();
 });
+
+test('brightness sends one explicit dimmer target and zero turns off; rejects non-dimmers',async()=>{
+ const {client,socket}=setup();auth(socket);
+ socket.receive({type:'result',id:2,success:true,result:[{...state('light.office','on'),attributes:{brightness:128,supported_color_modes:['brightness']}},{...state('light.porch','off'),attributes:{supported_color_modes:['onoff']}},state('switch.lamp','on')]});
+ assert.equal(client.entities.get('light.office').dimmable,true);assert.equal(client.entities.get('light.porch').dimmable,false);
+ let pending=client.setEntity('light.office',true,37),command=socket.sent.at(-1);
+ assert.deepEqual(command,{type:'call_service',domain:'light',service:'turn_on',target:{entity_id:'light.office'},service_data:{brightness_pct:37},id:3});
+ socket.receive({type:'result',id:command.id,success:true});await pending;
+ pending=client.setEntity('light.office',true,0);command=socket.sent.at(-1);assert.equal(command.service,'turn_off');assert.equal(command.service_data,undefined);socket.receive({type:'result',id:command.id,success:true});await pending;
+ for(const [id,value] of [['light.porch',40],['switch.lamp',50],['light.office',101],['light.office',NaN],['light.office',-1]])await assert.rejects(client.setEntity(id,true,value),/dimmable/);
+ client.stop();
+});
