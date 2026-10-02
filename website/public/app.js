@@ -131,14 +131,20 @@ $('floor').onchange=()=>{
 };
 function renderRooms(){
  $('rooms').replaceChildren();renderLabels();
+ const primaryIDs=new Set(['primary-bedroom','primary-closet','primary-bath']);
+ let primaryGroup=null;
  for(const room of rooms.filter(r=>visibleOnFloor(r,$('floor').value))){
   const devices=visibleDevices(room);
   const state=roomState(room,mode,snapshot),card=document.createElement('div');card.className='room'+(selected===room.id?' selected':'');
-  const head=document.createElement('div');head.className='room-head';const text=document.createElement('div'),title=document.createElement('span'),sub=document.createElement('small');title.className='room-name';title.textContent=room.name;sub.textContent=[room.references?.join('/'),state.label].filter(Boolean).join(' · ');text.append(title,sub);head.append(text);
+  const head=document.createElement('div');head.className='room-head';const text=document.createElement('div'),title=document.createElement('span'),sub=document.createElement('small');title.className='room-name';title.textContent=room.id==='primary-bath'?'Primary Vanity / Bath':room.name;sub.textContent=[room.references?.join('/'),state.label].filter(Boolean).join(' · ');text.append(title,sub);head.append(text);
   const button=document.createElement('button');button.className='toggle'+(state.level>0?' on':'');button.setAttribute('aria-label',`Toggle demo ${room.name}`);button.setAttribute('aria-pressed',state.level>0);button.disabled=mode==='live'&&(snapshot.status!=='connected'||!room.entities.length);button.setAttribute('aria-label',`${mode==='demo'?'Toggle demo':'Control'} ${room.name}`);button.onclick=e=>{e.stopPropagation();controlRoom(room)};if(mode==='demo'&&devices.length)head.append(button);card.append(head);
   if(mode==='live')for(const id of devices)card.append(deviceButton(id));
   if(mode==='demo'&&devices.length){const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=100;slider.value=room.demo*100;slider.setAttribute('aria-label',`${room.name} demo brightness`);slider.onclick=e=>e.stopPropagation();slider.oninput=()=>{room.demo=+slider.value/100;sub.textContent=room.demo>0?'Demo · on':'Demo · off';button.classList.toggle('on',room.demo>0);button.setAttribute('aria-pressed',room.demo>0);updateVisuals()};slider.onchange=save;card.append(slider)}
-  card.onclick=()=>selectRoom(room.id);$('rooms').append(card);
+  card.onclick=()=>selectRoom(room.id);
+  if(primaryIDs.has(room.id)){
+   if(!primaryGroup){primaryGroup=document.createElement('section');primaryGroup.className='primary-group';primaryGroup.setAttribute('aria-label','Primary lights');const heading=document.createElement('h3');heading.textContent='Primary lights';primaryGroup.append(heading);$('rooms').append(primaryGroup)}
+   primaryGroup.append(card);
+  }else $('rooms').append(card);
  }
  if(!rooms.length){const p=document.createElement('p');p.className='note';p.textContent='Add a room, draw its footprint, then try the lights.';$('rooms').append(p)}
  $('add').disabled=rooms.length>=MAX_ROOMS;

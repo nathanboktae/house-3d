@@ -15,3 +15,5 @@
 .room-label.passive{cursor:default;border:1px solid #ffffff35;border-radius:8px;color:#e6edef;pointer-events:none}
 
 .connection-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;flex-shrink:0;color:#ed8585}.connection-icon[data-state=connected]{color:#86d99a}.connection-icon[data-state=connecting]{color:#f0c565}.connection-slash{display:none}.connection-icon[data-state=disconnected] .connection-slash{display:block}
+
+.primary-group{border:1px solid #ffffff20;border-radius:11px;background:#19252a;padding:13px;margin:8px 0}.primary-group h3{font-size:14px;font-weight:500;margin:0 0 8px;color:#f0d0a2}.primary-group .room{border:0;border-radius:6px;background:transparent;padding:10px 0;margin:0}.primary-group .room+.room{border-top:1px solid #ffffff10}.primary-group .room.selected .room-name{color:#f0d0a2}
