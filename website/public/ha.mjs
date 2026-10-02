@@ -1,4 +1,4 @@
-/** Browser-only, read-only Home Assistant WebSocket client. Never authenticates asset requests. */
+/** Browser-only Home Assistant WebSocket client. Never authenticates asset requests. */
 export const DEFAULT_HA_URL = 'https://home-assistant.example';
 export const TOKEN_KEY = 'HA_TOKEN';
 export const URL_KEY = 'HA_URL';
@@ -35,6 +35,7 @@ export class HomeAssistant {
   constructor(onState, {Socket = globalThis.WebSocket, retryMs = 1000, heartbeatMs = 25000, timeoutMs = 15000} = {}) {
     Object.assign(this, {onState, Socket, retryMs, heartbeatMs, timeoutMs});
     this.generation = 0;
+    this.pending = new Map();
     this.entities = new Map();
     this.status = 'not_configured';
   }
@@ -50,7 +51,21 @@ export class HomeAssistant {
     clearInterval(this.heartbeat);
   }
 
+  cancelCommands() {
+    for (const request of this.pending.values()) { clearTimeout(request.timer); request.reject(new Error('Connection closed; command outcome unknown. Check the device state.')); }
+    this.pending.clear();
+    this.sendCommand = null;
+  }
+
+  setEntity(id, on) {
+    if (this.status !== 'connected' || !this.sendCommand) return Promise.reject(new Error('Connect Home Assistant first.'));
+    const entity = this.entities.get(id);
+    if (!/^(light|switch)\.[a-z0-9_]+$/.test(id) || !entity || !['on','off'].includes(entity.state) || entity.members?.length) return Promise.reject(new Error('Choose an available individual light or switch, not a group.'));
+    return this.sendCommand({type:'call_service', domain:id.split('.')[0], service:on?'turn_on':'turn_off', target:{entity_id:id}});
+  }
+
   stop(status = 'not_configured') {
+    this.cancelCommands();
     this.generation++;
     this.clearTimers();
     if (this.socket) {
@@ -80,6 +95,7 @@ export class HomeAssistant {
     const attrs = state.attributes || {};
     this.entities.set(id, {
       id, name: String(attrs.friendly_name || id), state: state.state,
+      members: Array.isArray(attrs.entity_id) ? attrs.entity_id : [],
       brightness: Number.isFinite(attrs.brightness) ? attrs.brightness : null,
       updated: state.last_updated || '',
     });
@@ -97,11 +113,22 @@ export class HomeAssistant {
     const current = () => generation === this.generation;
     const timeout = () => { clearTimeout(this.deadline); this.deadline = setTimeout(() => socket.close(), this.timeoutMs); };
     const send = value => socket.send(JSON.stringify(value));
+    this.sendCommand = command => new Promise((resolve,reject) => {
+      const id=nextID++;
+      const timer=setTimeout(()=>{this.pending.delete(id);reject(new Error('Command timed out; check the device state before trying again.'));},this.timeoutMs);
+      this.pending.set(id,{resolve,reject,timer});
+      try { send({...command,id}); } catch { clearTimeout(timer);this.pending.delete(id);reject(new Error('Could not send command.')); }
+    });
     timeout();
     socket.onmessage = event => {
       if (!current()) return;
       try {
         const message = JSON.parse(event.data);
+        if (message.type === 'result' && this.pending.has(message.id)) {
+          const request=this.pending.get(message.id);this.pending.delete(message.id);clearTimeout(request.timer);
+          if(message.success)request.resolve();else request.reject(new Error('Home Assistant rejected the command: '+(message.error?.code || 'unknown error')));
+          return;
+        }
         if (message.type === 'auth_invalid') { this.stop('auth_failed'); return; }
         if (phase === 'hello' && message.type === 'auth_required') {
           send({type: 'auth', access_token: this.config.token});
@@ -139,7 +166,7 @@ export class HomeAssistant {
     socket.onerror = () => { if (current()) socket.close(); };
     socket.onclose = () => {
       if (!current()) return;
-      this.clearTimers(); this.entities.clear(); this.publish('disconnected');
+      this.cancelCommands(); this.clearTimers(); this.entities.clear(); this.publish('disconnected');
       this.retryTimer = setTimeout(() => { if (current() && this.config) this.connect(); }, this.delay);
       this.delay = Math.min(this.delay * 2, 30000);
     };

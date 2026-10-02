@@ -5,3 +5,7 @@
 .room-labels{position:absolute;inset:0;pointer-events:none}.room-label{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;white-space:nowrap;padding:5px 7px;font-size:10px;background:#122027df;box-shadow:0 2px 8px #0006;border-color:#ffffff35}.room-label.selected{color:#f5d299;border-color:#e9c38c}.room-label[hidden]{display:none}.label-toggle{display:flex;align-items:center;margin:0;padding:0 7px;background:#172126cc;border-radius:7px;white-space:nowrap}.label-toggle input{width:auto!important;margin:0 5px 0 0!important;accent-color:#ddb67e}#reset-map{margin-top:12px}
 
 .room-label{white-space:normal;max-width:100px;text-align:center;line-height:1.3}.room-label.selected{z-index:1}
+
+.room-marker{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;display:flex;flex-direction:column;align-items:center;gap:4px}.room-marker .room-label{position:static;transform:none}.room-marker[hidden]{display:none}.room-bulb{display:none;width:34px;height:34px;border-radius:50%;padding:0;font-size:22px;color:#ffd69c;background:#18262f}.top-view .room-bulb{display:block}#device-controls{display:grid;gap:12px}#device-controls button{text-align:left;padding:14px}
+
+.room-bulb{color:#94a5ad}.room-bulb.on{color:#ffdb95;background:#53412c}

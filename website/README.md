@@ -1,6 +1,6 @@
 # Nathan’s Home
 
-A backend-free 3D home viewer with editable room lighting regions and direct Home Assistant updates. It runs on GitHub Pages or any HTTPS static host. The GLB is unchanged; demo controls never switch real lights.
+A backend-free 3D home viewer with editable room lighting regions and direct Home Assistant updates. It runs on GitHub Pages or any HTTPS static host. The GLB is unchanged; demo controls never switch real lights. Live mode controls individual devices through the room-light dialog.
 
 ## Run locally
 
@@ -34,11 +34,11 @@ The settings dialog does not display the saved token. Browser storage failures a
 
 ### Authentication on every request
 
-Home Assistant’s [WebSocket protocol](https://developers.home-assistant.io/docs/api/websocket/) authenticates once per socket with `{type: "auth", access_token: HA_TOKEN}`. Every subsequent command is authorized by that authenticated connection; repeating the token on every command is not part of the protocol. Each reconnect sends the saved token again. The app subscribes to `state_changed`, obtains `get_states`, and sends heartbeat `ping` messages. It never calls a control service or uses REST.
+Home Assistant’s [WebSocket protocol](https://developers.home-assistant.io/docs/api/websocket/) authenticates once per socket with `{type: "auth", access_token: HA_TOKEN}`. Every subsequent command is authorized by that authenticated connection; repeating the token on every command is not part of the protocol. Each reconnect sends the saved token again. The app subscribes to `state_changed`, obtains `get_states`, and sends heartbeat `ping` messages. Live controls use `call_service` with one explicit light/switch entity ID and `turn_on` or `turn_off`, following the [HA WebSocket API](https://developers.home-assistant.io/docs/api/websocket/). No area-wide, floor-wide, or group commands are sent. Commands are not retried automatically; failures/timeouts are reported and actual state events drive the display. It does not use REST.
 
 The token is sent **only to the configured Home Assistant WebSocket endpoint**. It is never appended to a URL or attached to GitHub Pages, GLB, JavaScript, or texture requests. It is never included in room-map exports, build artifacts, or application logs.
 
-Local storage persists the token unencrypted for this browser profile. Any JavaScript running on the same origin can read it; a token has its Home Assistant user’s permissions, even though this app is read-only. Use a trusted browser/site and preferably a dedicated non-administrator HA user. All projects under a given `username.github.io` share the same origin and local storage; a separate trusted custom domain provides separation from other Pages projects. The build vendors its scripts locally, but deployment code must still be trusted. Public static hosting also makes the included house GLB publicly downloadable; Home Assistant authentication protects live states, not the static model.
+Local storage persists the token unencrypted for this browser profile. Any JavaScript running on the same origin can read it; a token has its Home Assistant user’s permissions, and live controls can operate mapped devices. Use a trusted browser/site and preferably a dedicated non-administrator HA user. All projects under a given `username.github.io` share the same origin and local storage; a separate trusted custom domain provides separation from other Pages projects. The build vendors its scripts locally, but deployment code must still be trusted. Public static hosting also makes the included house GLB publicly downloadable; Home Assistant authentication protects live states, not the static model.
 
 ## Does Nabu Casa support CORS?
 
@@ -69,7 +69,7 @@ The workflow installs the exact pinned viewer dependencies, runs the browser-cli
 
 The default map contains Nathan’s 19 named rooms, traced as polygon footprints from the numbered floor images. M12 and B6 share one Stairway spanning both floors. B8 is Basement Hallway. Click an in-scene label or sidebar card to select its room. **Main Floor** and **Basement** filter the scan, labels, and sidebar; All floors shows main-floor labels so basement names do not obscure the floor above. The Labels checkbox hides labels.
 
-The map matches 14 Home Assistant lights across 13 rooms. Den combines `light.den` and `light.media`. Primary Bath uses `light.primary_vanity`; Kitchen uses `light.kitchen_south`. Living Room, Upper Hallway, Stairway, Basement Bathroom, Storage Room, and Basement Hallway have no mapped lights and remain neutral in live mode. The exterior `light.front_door` is intentionally unassigned. Entity matches were checked against the read-only inventory; no HA area, device, or configuration was changed.
+The map matches 16 Home Assistant lights across 14 rooms. Den combines `light.den` and `light.media`. Primary Bath uses `light.primary_vanity`; Kitchen uses `light.kitchen_east_lights` and `light.kitchen_west_light`; Living Room uses `light.living_room`. Upper Hallway, Stairway, Basement Bathroom, Storage Room, and Basement Hallway have no mapped lights and remain neutral in live mode. The exterior `light.front_door` is intentionally unassigned. Entity matches were checked against the read-only inventory; no HA area, device, or configuration was changed.
 
 - Expand **Edit selected room** to adjust the name, bounds, and mapped light/switch entities.
 - Changing bounds scales the existing polygon and its label. Height bounds keep lighting on the correct floor; the approximate floor split is Y = -0.15 m.
@@ -97,3 +97,9 @@ python3 -m unittest discover -s website/tests -p 'test_*.py'
 Tests cover browser storage and forgetting, secure URL validation, partial-storage failures, per-connection authentication, reconnects, heartbeats, subscription/snapshot ordering, stale callback protection, state filtering, permission/authentication failures, and unknown-room handling. Build checks verify the original GLB checksum, subdirectory-safe paths, and exclusion of secret/server files. Browser testing confirms the settings dialog, direct unauthenticated Nabu Casa handshake, demo lighting, and static GLB rendering. No actual token is required or embedded in tests.
 
 Room tests also cover the confirmed map, floor filtering, concave footprints, proportional edits, and migration without losing custom mappings.
+
+## Individual light controls
+
+Choose **Top view**, a floor, and **Live home**. Click the sun/light icon in a room to open its individual devices, then click the desired device to turn it on or off. Each command targets exactly one available entity; entities advertising group members are disabled. In demo mode the same icon changes shading only. Sidebar live toggles open the same device chooser. The UI reports failures and does not optimistically pretend a light changed.
+
+The October 2 inventory refresh added Living Room and Kitchen East/West to the default map. Existing custom browser maps are preserved: export a backup and select **Use labeled room map** to load the refreshed defaults, or edit those rooms manually. The old screenshot’s three draft regions are not the current 19-room map. No real devices were operated during development verification.

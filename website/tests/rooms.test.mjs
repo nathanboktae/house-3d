@@ -24,7 +24,7 @@ test('confirmed map includes all references, one shared stairway, and both Den l
  assert.deepEqual(defaults.find(r=>r.id==='den').entities,['light.den','light.media']);
  const hall=defaults.find(r=>r.id==='basement-hallway');
  assert.equal(hall.name,'Basement Hallway');assert.deepEqual(hall.entities,[]);
- assert.equal(defaults.flatMap(r=>r.entities).length,14);
+ assert.equal(defaults.flatMap(r=>r.entities).length,16);
  assert.ok(!defaults.flatMap(r=>r.entities).includes('light.front_door'));
  for(const r of defaults)assert.ok(pointInFootprint([r.labelPosition[0],r.labelPosition[2]],footprintOf(r)),r.name);
 });

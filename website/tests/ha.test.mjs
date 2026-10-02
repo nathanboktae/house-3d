@@ -112,3 +112,22 @@ test('connection probe never sends credentials or other messages', async () => {
   socket.receive({type: 'auth_required'});
   await promise; assert.deepEqual(socket.sent, []); assert(socket.closed);
 });
+
+test('controls exactly one entity; handles acknowledgement, rejection, groups and disconnect',async()=>{
+ const {client,socket}=setup();auth(socket);
+ socket.receive({type:'result',id:2,success:true,result:[state('light.office','off'),state('light.bedroom','on'),{...state('light.group','on'),attributes:{entity_id:['light.office','light.bedroom']}}]});
+ const request=client.setEntity('light.office',true),command=socket.sent.at(-1);
+ assert.deepEqual(command,{id:3,type:'call_service',domain:'light',service:'turn_on',target:{entity_id:'light.office'}});
+ socket.receive({type:'result',id:command.id,success:true});await request;
+ assert.equal(client.entities.get('light.office').state,'off');
+ await assert.rejects(client.setEntity('light.group',false),/individual/);
+ await assert.rejects(client.setEntity('light.missing',false));
+ const failed=client.setEntity('light.bedroom',false);socket.receive({type:'result',id:socket.sent.at(-1).id,success:false,error:{code:'unauthorized'}});await assert.rejects(failed,/unauthorized/);
+ const interrupted=client.setEntity('light.office',true);client.stop();await assert.rejects(interrupted,/outcome unknown/);
+ await assert.rejects(client.setEntity('light.office',true),/Connect/);
+});
+test('command timeout does not retry or invent a device state',async()=>{
+ const {client,socket}=setup({timeoutMs:20});auth(socket);socket.receive({type:'result',id:2,success:true,result:[state('switch.lamp','off')]});
+ const command=client.setEntity('switch.lamp',true);await assert.rejects(command,/timed out/);
+ assert.equal(socket.sent.filter(m=>m.type==='call_service').length,1);assert.equal(client.entities.get('switch.lamp').state,'off');client.stop();
+});

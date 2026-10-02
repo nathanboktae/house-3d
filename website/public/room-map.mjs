@@ -368,7 +368,7 @@ export const confirmedRooms = [
     "references": [
       "M8"
     ],
-    "entities": [],
+    "entities": ["light.living_room"],
     "min": [
       3.835,
       -0.15,
@@ -481,7 +481,8 @@ export const confirmedRooms = [
       "M10"
     ],
     "entities": [
-      "light.kitchen_south"
+      "light.kitchen_east_lights",
+      "light.kitchen_west_light"
     ],
     "min": [
       6.5867,

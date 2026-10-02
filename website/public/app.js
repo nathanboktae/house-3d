@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {defaults,validateRooms,roomState,MAX_ROOMS,MAX_VERTICES,ROOM_STORAGE_KEY,loadRoomMap,footprintOf,visibleOnFloor,resizeRoom} from './rooms.mjs';
-import {HomeAssistant,DEFAULT_HA_URL,TOKEN_KEY,URL_KEY,loadConnection,saveConnection,forgetConnection,normalizeURL,testConnection} from './ha.mjs';
+import {defaults,validateRooms,roomState,MAX_ROOMS,MAX_VERTICES,ROOM_STORAGE_KEY,loadRoomMap,footprintOf,visibleOnFloor,resizeRoom} from './rooms.mjs?v=controls2';
+import {HomeAssistant,DEFAULT_HA_URL,TOKEN_KEY,URL_KEY,loadConnection,saveConnection,forgetConnection,normalizeURL,testConnection} from './ha.mjs?v=controls1';
 const $=id=>document.getElementById(id),stage=$('stage');
 let rooms=structuredClone(defaults),selected=rooms[0].id,mode='demo',snapshot={status:'not_configured',entities:[]},drawStart=null,drawing=false,model=null;
 try{const loaded=loadRoomMap(localStorage);rooms=loaded.rooms;selected=rooms[0]?.id;if(loaded.preserved)notify('Your custom map was preserved. Use “Use labeled room map” below to load the confirmed rooms.')}catch{notify('Saved mapping could not be read. Using the confirmed room map.')}
@@ -19,15 +19,42 @@ const uniforms={roomMin:{value:Array.from({length:MAX_ROOMS},()=>new THREE.Vecto
 const box=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0xe8bc7a}));box.visible=false;scene.add(box);
 const labelLayer=document.createElement('div');labelLayer.className='room-labels';stage.append(labelLayer);
 let roomLabels=[];
+const pendingControls=new Set();
+async function controlEntity(id){
+ const entity=snapshot.entities.find(e=>e.id===id);if(!entity||pendingControls.has(id))return;
+ pendingControls.add(id);renderDeviceControls();
+ try{await homeAssistant.setEntity(id,entity.state!=='on');notify('Command accepted. Waiting for the device state.')}catch(error){notify(error.message)}
+ finally{pendingControls.delete(id);renderDeviceControls()}
+}
+let controlRoomID=null;
+function renderDeviceControls(){
+ const room=rooms.find(r=>r.id===controlRoomID);if(!room)return;
+ $('control-title').textContent=room.name;$('device-controls').replaceChildren();
+ for(const id of room.entities){
+  const entity=snapshot.entities.find(e=>e.id===id),button=document.createElement('button');
+  button.textContent=`${entity?.name||id} · ${pendingControls.has(id)?'Sending…':entity?.state||'unavailable'}`;
+  button.title=id;button.disabled=snapshot.status!=='connected'||pendingControls.has(id)||!['on','off'].includes(entity?.state)||!!entity?.members?.length;
+  button.onclick=()=>controlEntity(id);$('device-controls').append(button);
+ }
+ if(!room.entities.length)$('device-controls').textContent='No lights mapped. Select this room and edit its entities.';
+}
+function controlRoom(room){
+ if(mode==='demo'){room.demo=room.demo>0?0:1;save();renderRooms();updateVisuals();return}
+ controlRoomID=room.id;renderDeviceControls();$('room-controls').showModal();
+}
+$('close-controls').onclick=()=>$('room-controls').close();
 function selectRoom(id){selected=id;renderRooms();renderEditor();updateVisuals()}
 function renderLabels(){
  labelLayer.replaceChildren();roomLabels=[];
  for(const room of rooms.filter(r=>visibleOnFloor(r,$('floor').value,true))){
-  const button=document.createElement('button');button.className='room-label'+(room.id===selected?' selected':'');button.textContent=room.name;button.onclick=()=>selectRoom(room.id);labelLayer.append(button);roomLabels.push({room,button});
+  const button=document.createElement('button');button.className='room-label'+(room.id===selected?' selected':'');const name=document.createElement('span');name.textContent=room.name;button.append(name);button.onclick=()=>selectRoom(room.id);
+  const bulb=document.createElement('button');bulb.className='room-bulb'+(roomState(room,mode,snapshot).level>0?' on':'');bulb.textContent='☀';bulb.setAttribute('aria-label',`${mode==='demo'?'Preview':'Control'} ${room.name} lights`);bulb.title=mode==='demo'?'Demo only':`Control individual lights in ${room.name}`;bulb.onclick=e=>{e.stopPropagation();controlRoom(room)};
+  const wrapper=document.createElement('div');wrapper.className='room-marker';wrapper.append(button,bulb);labelLayer.append(wrapper);roomLabels.push({room,button:wrapper});
  }
 }
 function positionLabels(){
  labelLayer.hidden=drawing||!$('show-labels').checked;
+ labelLayer.classList.toggle('top-view',$('top').classList.contains('active'));
  const occupied=[];
  for(const {room,button} of roomLabels){
   const anchor=room.labelPosition?[...room.labelPosition]:[(room.min[0]+room.max[0])/2,room.min[1]+.15,(room.min[2]+room.max[2])/2];
@@ -36,7 +63,7 @@ function positionLabels(){
   button.hidden=p.z < -1||p.z > 1||Math.abs(p.x)>1||Math.abs(p.y)>1;
   const x=(p.x+1)*stage.clientWidth/2,y=(1-p.y)*stage.clientHeight/2,w=button.offsetWidth,h=button.offsetHeight;
   let offset=0;
-  for(const dy of [0,-h-5,h+5,-2*(h+5),2*(h+5)]){
+  for(const dy of ($('top').classList.contains('active')?[0]:[0,-h-5,h+5,-2*(h+5),2*(h+5)])){
    offset=dy;
    if(!occupied.some(r=>Math.abs(x-r.x)<(w+r.w)/2+3&&Math.abs(y+dy-r.y)<(h+r.h)/2+3))break;
   }
@@ -97,7 +124,7 @@ function renderRooms(){
  for(const room of rooms.filter(r=>visibleOnFloor(r,$('floor').value))){
   const state=roomState(room,mode,snapshot),card=document.createElement('div');card.className='room'+(selected===room.id?' selected':'');
   const head=document.createElement('div');head.className='room-head';const text=document.createElement('div'),title=document.createElement('span'),sub=document.createElement('small');title.className='room-name';title.textContent=room.name;sub.textContent=[room.references?.join('/'),state.label].filter(Boolean).join(' · ');text.append(title,sub);head.append(text);
-  const button=document.createElement('button');button.className='toggle'+(state.level>0?' on':'');button.setAttribute('aria-label',`Toggle demo ${room.name}`);button.setAttribute('aria-pressed',state.level>0);button.disabled=mode==='live';button.onclick=e=>{e.stopPropagation();room.demo=room.demo>0?0:1;save();renderRooms();updateVisuals()};head.append(button);card.append(head);
+  const button=document.createElement('button');button.className='toggle'+(state.level>0?' on':'');button.setAttribute('aria-label',`Toggle demo ${room.name}`);button.setAttribute('aria-pressed',state.level>0);button.disabled=mode==='live'&&(snapshot.status!=='connected'||!room.entities.length);button.setAttribute('aria-label',`${mode==='demo'?'Toggle demo':'Control'} ${room.name}`);button.onclick=e=>{e.stopPropagation();controlRoom(room)};head.append(button);card.append(head);
   if(mode==='demo'){const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=100;slider.value=room.demo*100;slider.setAttribute('aria-label',`${room.name} demo brightness`);slider.onclick=e=>e.stopPropagation();slider.oninput=()=>{room.demo=+slider.value/100;sub.textContent=room.demo>0?'Demo · on':'Demo · off';button.classList.toggle('on',room.demo>0);button.setAttribute('aria-pressed',room.demo>0);updateVisuals()};slider.onchange=save;card.append(slider)}
   card.onclick=()=>selectRoom(room.id);$('rooms').append(card);
  }
@@ -138,10 +165,10 @@ renderer.domElement.addEventListener('pointerdown',e=>{
  for(const axis of [0,2]){r.min[axis]=Math.round(Math.min(hit.getComponent(axis),drawStart.getComponent(axis))*100)/100;r.max[axis]=Math.round(Math.max(hit.getComponent(axis),drawStart.getComponent(axis))*100)/100}
  delete r.footprint;delete r.labelPosition;cancelDraw();save();renderRooms();renderEditor();updateVisuals();notify('Footprint saved. Adjust height bounds if needed.');
 });
-function setMode(next){mode=next;$('demo').classList.toggle('active',mode==='demo');$('live').classList.toggle('active',mode==='live');$('mode-note').textContent=mode==='demo'?'Demo controls only change this view.':'Read-only live states. Unknown rooms keep their original appearance.';renderRooms();updateVisuals()}
+function setMode(next){mode=next;$('demo').classList.toggle('active',mode==='demo');$('live').classList.toggle('active',mode==='live');$('mode-note').textContent=mode==='demo'?'Demo controls only change this view.':'Live controls affect real devices. Choose a room, then its individual light.';renderRooms();updateVisuals()}
 $('demo').onclick=()=>setMode('demo');$('live').onclick=()=>setMode('live');
 const labels={not_configured:'Demo · no saved token',connecting:'Connecting to your home',connected:'Your home is connected',auth_failed:'Token rejected · open settings',disconnected:'Home offline · reconnecting',permission_denied:'Home Assistant denied access',connection_error:'Connection failed · open settings',protocol_error:'Connection error · open settings'};
-function receiveState(next){snapshot=next;if($('setup').open&&snapshot.status!=='not_configured')$('connection-result').textContent=labels[snapshot.status]||snapshot.status;$('connection').textContent=labels[snapshot.status]||snapshot.status;$('connection').classList.toggle('online',snapshot.status==='connected');renderRooms();if(document.activeElement!==$('entities'))renderEntities();updateVisuals()}
+function receiveState(next){snapshot=next;renderDeviceControls();if($('setup').open&&snapshot.status!=='not_configured')$('connection-result').textContent=labels[snapshot.status]||snapshot.status;$('connection').textContent=labels[snapshot.status]||snapshot.status;$('connection').classList.toggle('online',snapshot.status==='connected');renderRooms();if(document.activeElement!==$('entities'))renderEntities();updateVisuals()}
 const homeAssistant=new HomeAssistant(receiveState);
 function restoreConnection(){try{homeAssistant.start(loadConnection(localStorage))}catch{homeAssistant.stop();notify('Browser storage is unavailable or the saved connection is invalid. Open Home Assistant settings.')}}
 function refreshSettings(){
