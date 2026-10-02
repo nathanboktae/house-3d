@@ -1,6 +1,6 @@
 # Nathan’s Home
 
-A backend-free 3D home viewer with editable room lighting regions and direct Home Assistant updates. It runs on GitHub Pages or any HTTPS static host. The GLB is unchanged; demo controls never switch real lights. Live mode controls individual devices through the room-light dialog.
+A backend-free 3D home viewer with editable room lighting regions and direct Home Assistant updates. It runs on GitHub Pages or any HTTPS static host. The GLB is unchanged; demo controls never switch real lights. Live mode controls individual devices directly.
 
 ## Run locally
 
@@ -100,6 +100,6 @@ Room tests also cover the confirmed map, floor filtering, concave footprints, pr
 
 ## Individual light controls
 
-Choose **Top view**, a floor, and **Live home**. Click the sun/light icon in a room to open its individual devices, then click the desired device to turn it on or off. Each command targets exactly one available entity; entities advertising group members are disabled. In demo mode the same icon changes shading only. Sidebar live toggles open the same device chooser. The UI reports failures and does not optimistically pretend a light changed.
+Choose **Top view**, a floor, and **Live home**. Click a sun/light icon to immediately turn that individual device on or off. Rooms with multiple devices show a separate labeled icon for each. Each command targets exactly one available entity; entities advertising group members are disabled. In demo mode the same icon changes shading only. Sidebar live buttons also toggle their individual devices directly. No control dialog is shown. The UI reports failures and does not optimistically pretend a light changed.
 
 The October 2 inventory refresh added Living Room and Kitchen East/West to the default map. Existing custom browser maps are preserved: export a backup and select **Use labeled room map** to load the refreshed defaults, or edit those rooms manually. The old screenshot’s three draft regions are not the current 19-room map. No real devices were operated during development verification.
