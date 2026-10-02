@@ -159,8 +159,8 @@ function renderRooms(){
  let primaryGroup=null;
  for(const room of rooms.filter(r=>visibleOnFloor(r,activeView))){
   const devices=visibleDevices(room);
-  const state=roomState(room,mode,snapshot),card=document.createElement('div');card.className='room';
-  const head=document.createElement('div');head.className='room-head';const text=document.createElement('div'),title=document.createElement('span'),sub=document.createElement('small');title.className='room-name';title.textContent=room.id==='primary-bath'?'Primary Vanity / Bath':room.name;sub.textContent=[room.references?.join('/'),state.label].filter(Boolean).join(' · ');text.append(title,sub);head.append(text);
+  const card=document.createElement('div');card.className='room';
+  const head=document.createElement('div');head.className='room-head';const text=document.createElement('div'),title=document.createElement('span');title.className='room-name';title.textContent=room.id==='primary-bath'?'Primary Vanity / Bath':room.name;text.append(title);head.append(text);
   card.append(head);
   if(devices.length===1){
    const holder=document.createElement('div');const toggle=appendDeviceControl(holder,devices[0]);
