@@ -1,4 +1,4 @@
-import {confirmedRooms} from './room-map.mjs?v=controls2';
+import {confirmedRooms} from './room-map.mjs?v=hallway-garage1';
 
 export const MAX_ROOMS = 32;
 export const MAX_VERTICES = 16;

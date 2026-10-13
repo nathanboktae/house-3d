@@ -325,7 +325,7 @@ export const confirmedRooms = [
     "references": [
       "M7"
     ],
-    "entities": [],
+    "entities": ["light.upper_hallway"],
     "min": [
       -1.1158,
       -0.15,

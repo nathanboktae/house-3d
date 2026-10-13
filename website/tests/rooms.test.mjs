@@ -19,12 +19,13 @@ test('mapping rejects invalid bounds, IDs and non-light entities',()=>{
 import {footprintOf,pointInFootprint,visibleOnFloor,resizeRoom,loadRoomMap,ROOM_STORAGE_KEY,LEGACY_STORAGE_KEY} from '../public/rooms.mjs';
 test('confirmed map includes all references, one shared stairway, and both Den lights',()=>{
  assert.equal(defaults.length,19);
+ assert.deepEqual(defaults.find(r=>r.id==='upper-hallway').entities,['light.upper_hallway']);
  assert.equal(defaults.flatMap(r=>r.references).length,20);
  assert.deepEqual(defaults.find(r=>r.id==='stairway').references,['M12','B6']);
  assert.deepEqual(defaults.find(r=>r.id==='den').entities,['light.den','light.media']);
  const hall=defaults.find(r=>r.id==='basement-hallway');
  assert.equal(hall.name,'Basement Hallway');assert.deepEqual(hall.entities,[]);
- assert.equal(defaults.flatMap(r=>r.entities).length,16);
+ assert.equal(defaults.flatMap(r=>r.entities).length,17);
  assert.ok(!defaults.flatMap(r=>r.entities).includes('light.front_door'));
  for(const r of defaults)assert.ok(pointInFootprint([r.labelPosition[0],r.labelPosition[2]],footprintOf(r)),r.name);
 });

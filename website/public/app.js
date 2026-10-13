@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {defaults,roomState,MAX_ROOMS,MAX_VERTICES,footprintOf,visibleOnFloor} from './rooms.mjs?v=controls2';
+import {defaults,roomState,MAX_ROOMS,MAX_VERTICES,footprintOf,visibleOnFloor} from './rooms.mjs?v=hallway-garage1';
 import {HomeAssistant,DEFAULT_HA_URL,TOKEN_KEY,URL_KEY,loadConnection,saveConnection,forgetConnection,normalizeURL,testConnection} from './ha.mjs?v=unified1';
 const $=id=>document.getElementById(id),stage=$('stage');
 const rooms=structuredClone(defaults),mode='live';
@@ -10,7 +10,7 @@ function notify(text){$('notice').textContent=text}
 const scene=new THREE.Scene(),renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setClearColor(0,0);stage.append(renderer.domElement);
 const camera=new THREE.PerspectiveCamera(38,1,.1,200),controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.minDistance=4;controls.maxDistance=65;controls.maxPolarAngle=Math.PI*.92;
 let activeView='all';
-const outdoorLights=[['light.deck_light','Deck Light'],['light.backyard_cam_floodlight','Backyard Floodlight'],['light.front_door','Front Door Light']];
+const outdoorLights=[['light.deck_light','Deck Light'],['light.backyard_cam_floodlight','Backyard Floodlight'],['light.front_door','Front Door Light'],['light.garage','Garage Light']];
 const center=new THREE.Vector3(4.4,1.2,-2.3);
 function orbit(){camera.up.set(0,1,0);camera.position.copy(center).add(new THREE.Vector3(17,16,17));controls.target.copy(center);controls.enableRotate=true;controls.update()}
 function top(){camera.up.set(0,0,-1);camera.position.copy(center).add(new THREE.Vector3(0,23,.001));controls.target.copy(center);controls.enableRotate=false;controls.update()}
@@ -140,7 +140,7 @@ for(const [id,view] of [['orbit','all'],['main-floor','upper'],['basement','lowe
 $('aerial-photo').onerror=()=>{$('aerial-error').hidden=false};
 function renderOutside(){
  $('outdoor-markers').replaceChildren();
- const positions={'light.deck_light':[83,74],'light.backyard_cam_floodlight':[87,28],'light.front_door':[38,53]};
+ const positions={'light.deck_light':[83,74],'light.backyard_cam_floodlight':[87,28],'light.front_door':[38,53],'light.garage':[42,75]};
  for(const [id,name] of outdoorLights){
   const card=document.createElement('div');card.className='room';const head=document.createElement('div');head.className='room-head';const heading=document.createElement('span');heading.className='room-name';heading.textContent=name;head.append(heading);card.append(head);
   if(snapshot.entities.some(e=>e.id===id)){

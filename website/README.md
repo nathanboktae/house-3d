@@ -99,3 +99,5 @@ Choose **Main Floor** or **Basement**. Click a sun/light icon to immediately tur
 The view pills switch directly between Dollhouse (all floors, orbit), Main Floor (top-down), Basement (top-down), and Outside. Outside uses Nathan’s supplied cropped Redfin/NWMLS aerial photo, bundled as `house-aerial-cropped.png` in the static build. No external image request is needed. A load error leaves the outdoor controls available.
 
 Outdoor controls target `light.deck_light`, `light.backyard_cam_floodlight`, and `light.front_door` individually. Their markers sit approximately at the deck, backyard, and front entry; these are illustrative placements, not measured fixture coordinates. They follow the same connection, availability, and pending-command handling as indoor controls.
+
+Upper Hallway maps to `light.upper_hallway` (M7). Garage Light maps to `light.garage` in Outside, with an approximate garage-roof marker; the existing scan has no labeled garage region. `light.garage_door` is a different device and is not included. Both requested entities were verified in the HA inventory on October 12, 2026.
