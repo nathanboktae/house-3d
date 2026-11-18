@@ -273,7 +273,7 @@ export const confirmedRooms = [
       "M6"
     ],
     "entities": [
-      "light.office_light"
+      "light.office"
     ],
     "min": [
       -0.1083,
@@ -482,7 +482,7 @@ export const confirmedRooms = [
     ],
     "entities": [
       "light.kitchen_east_lights",
-      "light.kitchen_west_light"
+      "light.kitchen_west"
     ],
     "min": [
       6.5867,
@@ -692,7 +692,8 @@ export const confirmedRooms = [
     "references": [
       "B2"
     ],
-    "entities": [],
+    "entities": ["light.basement_bath"],
+    "fans": ["fan.basement_bath"],
     "min": [
       0.4117,
       -2.8,
@@ -834,14 +835,14 @@ export const confirmedRooms = [
     "references": [
       "B5"
     ],
-    "entities": [],
+    "entities": ["light.storage_room"],
     "min": [
       1.69,
       -2.8,
       -2.1633
     ],
     "max": [
-      7.9625,
+      5.2542,
       -0.15,
       1.3575
     ],
@@ -867,11 +868,7 @@ export const confirmedRooms = [
         0.0467
       ],
       [
-        7.9625,
-        0.0467
-      ],
-      [
-        7.9625,
+        5.2542,
         1.3575
       ],
       [
@@ -884,6 +881,17 @@ export const confirmedRooms = [
       -2.55,
       0.0033
     ],
+    "demo": 0.65
+  },
+  {
+    "id": "crawlspace",
+    "name": "Crawlspace",
+    "floor": "lower",
+    "references": [],
+    "entities": ["light.crawlspace_light"],
+    "min": [5.2542, -2.8, 0.0467],
+    "max": [7.9625, -0.15, 1.3575],
+    "labelPosition": [6.6084, -2.55, 0.7021],
     "demo": 0.65
   },
   {
@@ -938,7 +946,7 @@ export const confirmedRooms = [
     "references": [
       "B8"
     ],
-    "entities": [],
+    "entities": ["light.basement_hallway"],
     "min": [
       -1.1158,
       -2.8,

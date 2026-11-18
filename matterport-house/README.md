@@ -1,6 +1,27 @@
 # Matterport house → textured GLB
 
-Generated from the unauthenticated [public Matterport viewer](https://my.matterport.com/show/?m=w78hMjyWbY6), model `w78hMjyWbY6`, on 2026-09-26 UTC. The deliverable is **`output/house.glb`**. It is self-contained: geometry, UVs, materials, and eight PNG textures are embedded. No account, cookies, private API, guessed asset path, or access-control bypass was used.
+Generated from the unauthenticated [public Matterport viewer](https://my.matterport.com/show/?m=w78hMjyWbY6), model `w78hMjyWbY6`, on 2026-09-26 UTC. The original archive is **`output/house.glb`**; the website uses the cleaned **`output/house-clean.glb`**. It is self-contained: geometry, UVs, materials, and eight PNG textures are embedded. No account, cookies, private API, guessed asset path, or access-control bypass was used.
+
+## Cleaned dollhouse model
+
+`output/house-clean.glb` is a separate, reproducible cleanup of the original scan. The static website builds this model as `model/house.glb`. The original GLB, OBJ, textures, and downloaded tiles remain unchanged.
+
+- Trim upper-storey walls and skylight/roof remnants to a level **2.4 m** cutaway in source Y-up coordinates. This is a visualization choice, not a reconstruction of the actual ceiling heights. Intersecting triangles are cut with interpolated UVs for straight edges.
+- Weld coincident geometric vertices within 0.01 mm across tiles and materials, retaining UV seams.
+- Remove exposed sliver triangles longer than 25 cm and thinner than 8 mm, plus disconnected fragments with both less than 0.02 m² surface area and less than 45 cm bounding-box diagonal.
+- Gently relax short, nearly straight boundary chains, capped at 15 mm total movement. Preserve sharp corners, long edges, and the horizontal cutaway edge.
+
+The cleanup removes 290 small islands and 24 boundary slivers, and reduces the mesh from 108,289 to 103,893 triangles. It keeps all eight photographic texture atlases and the original coordinate system, so room overlays continue to align. Some tiny detached scan details may be removed along with noise. Missing furniture surfaces, reflective-surface distortions, and larger incomplete scan surfaces remain; this is not a watertight CAD reconstruction.
+
+```sh
+.venv-blender/bin/python matterport-house/scripts/clean_model.py
+.venv-blender/bin/python matterport-house/scripts/test_clean_model.py
+.venv-blender/bin/python matterport-house/scripts/validate_blender.py --clean
+node matterport-house/scripts/validate_gltf.cjs --clean
+python3 website/build.py
+```
+
+The cutaway height can be adjusted with `clean_model.py --wall-height 2.4`. `output/cleanup-report.json` records input/output hashes, cleanup counts, bounds, and parameters. The `clean-preview-{front,back,top}.png` images use the original camera framing for comparison. Cleaned Blender and glTF validation reports use the `clean-` prefix.
 
 ## Files
 
@@ -99,4 +120,4 @@ Drag to orbit; scroll to zoom. To inspect in Blender, use File → Import → gl
 
 ## Limitations
 
-This is the viewer's scan mesh, not CAD/BIM or a watertight architectural reconstruction. Furniture and reflective/thin surfaces have fragmented, stretched, or missing triangles; there are small scan spikes and holes. Ceilings and exterior/roof geometry are incomplete. Back-facing walls disappear as in a dollhouse view. The impressive fixed-position panoramas are separate imagery and are not substituted for the mesh's baked texture atlases. Navigation, panorama transitions, room labels, floor-isolation controls, and other Matterport UI features are not part of the GLB. No cleanup, hole filling, texture hallucination, or destructive simplification was applied.
+This is the viewer's scan mesh, not CAD/BIM or a watertight architectural reconstruction. Furniture and reflective/thin surfaces have fragmented, stretched, or missing triangles; there are small scan spikes and holes. Ceilings and exterior/roof geometry are incomplete. Back-facing walls disappear as in a dollhouse view. The impressive fixed-position panoramas are separate imagery and are not substituted for the mesh's baked texture atlases. Navigation, panorama transitions, room labels, floor-isolation controls, and other Matterport UI features are not part of the GLB. No cleanup was applied to the original `house.glb` archive. The separate cleaned model is described above; neither version fills missing surfaces or invents textures.

@@ -1,8 +1,15 @@
+import {roomTemperatures,roomClimates,CENTRAL_CLIMATE,roomTemperature,formatTemperature,climateCommand} from './climate.mjs';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {defaults,roomState,MAX_ROOMS,MAX_VERTICES,footprintOf,visibleOnFloor} from './rooms.mjs?v=hallway-garage1';
-import {HomeAssistant,DEFAULT_HA_URL,TOKEN_KEY,URL_KEY,loadConnection,saveConnection,forgetConnection,normalizeURL,testConnection} from './ha.mjs?v=unified1';
+import {defaults,roomState,MAX_ROOMS,MAX_VERTICES,footprintOf,visibleOnFloor} from './rooms.mjs?v=crawlspace4';
+import {HomeAssistant,DEFAULT_HA_URL,TOKEN_KEY,URL_KEY,loadConnection,saveConnection,forgetConnection,normalizeURL,testConnection} from './ha.mjs?v=crawlspace4';
+import {OptimisticControls} from './optimistic.mjs?v=1';
+import {createRouter,routeURL,shouldHandleLink} from './router.mjs?v=1';
+const baseURL=new URL('.',import.meta.url);
+// Keep relative assets anchored when pushState changes the document URL.
+document.querySelector('base').href=baseURL.href;
+const views=await fetch(new URL('./views.json',baseURL)).then(response=>{if(!response.ok)throw Error('Could not load view routes.');return response.json()});
 const $=id=>document.getElementById(id),stage=$('stage');
 const rooms=structuredClone(defaults),mode='live';
 let snapshot={status:'not_configured',entities:[]},model=null;
@@ -14,20 +21,62 @@ const outdoorLights=[['light.deck_light','Deck Light'],['light.backyard_cam_floo
 const center=new THREE.Vector3(4.4,1.2,-2.3);
 function orbit(){camera.up.set(0,1,0);camera.position.copy(center).add(new THREE.Vector3(17,16,17));controls.target.copy(center);controls.enableRotate=true;controls.update()}
 function top(){camera.up.set(0,0,-1);camera.position.copy(center).add(new THREE.Vector3(0,23,.001));controls.target.copy(center);controls.enableRotate=false;controls.update()}
-orbit();
 new ResizeObserver(()=>{const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix()}).observe(stage);
 const uniforms={roomMin:{value:Array.from({length:MAX_ROOMS},()=>new THREE.Vector3())},roomMax:{value:Array.from({length:MAX_ROOMS},()=>new THREE.Vector3())},roomLevel:{value:Array(MAX_ROOMS).fill(-1)},roomCount:{value:0},roomVertexCount:{value:Array(MAX_ROOMS).fill(0)},roomPoints:{value:Array.from({length:MAX_ROOMS*MAX_VERTICES},()=>new THREE.Vector2())}};
 const labelLayer=document.createElement('div');labelLayer.className='room-labels';stage.append(labelLayer);
 let roomLabels=[];
-const pendingControls=new Set();
-async function controlEntity(id,brightness){
- const entity=snapshot.entities.find(e=>e.id===id);if(!entity||pendingControls.has(id))return;
- pendingControls.add(id);renderRooms();
- try{await homeAssistant.setEntity(id,entity.state!=='on',brightness);notify('Command accepted. Waiting for the device state.')}catch(error){notify(error.message)}
- finally{pendingControls.delete(id);renderRooms()}
+const climatePanel=document.createElement('section');climatePanel.className='central-climate';stage.append(climatePanel);
+const climatePending=new Map();
+function appendTemperature(container,roomID){
+ const value=roomTemperature(roomID,snapshot);if(value===null)return;
+ const text=document.createElement('span');text.className='room-temperature';text.textContent=value;text.title='Room temperature';container.append(text);
 }
-function visibleDevices(room){return room.entities.filter(id=>{const entity=snapshot.entities.find(e=>e.id===id);return !!entity&&!entity.members?.length})}
-let adjustingBrightness=false;
+function climateIcon(kind){
+ const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+ svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('fill','none');svg.setAttribute('stroke','currentColor');svg.setAttribute('stroke-width','1.8');svg.setAttribute('stroke-linecap','round');svg.setAttribute('stroke-linejoin','round');svg.setAttribute('aria-hidden','true');svg.classList.add('climate-icon');
+ const paths={power:'M12 3v9 M6.34 5.66a8 8 0 1 0 11.32 0',thermometer:'M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0Z M12 8v10 M10.5 18a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0',target:'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0 M7 12a5 5 0 1 0 10 0a5 5 0 1 0-10 0 M11 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0'};
+ const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',paths[kind]);svg.append(path);return svg;
+}
+function appendClimate(container,id,title){
+ const entity=snapshot.entities.find(e=>e.id===id),pending=climatePending.get(id);
+ const card=document.createElement('div');card.className='climate-control';
+ if(title){const heading=document.createElement('strong');heading.textContent=title;card.append(heading)}
+ const status=document.createElement('div');status.className='climate-status';
+ if(snapshot.status!=='connected'||!entity){status.textContent='Unavailable'}else{
+  for(const [icon,label,value] of [['thermometer','Current temperature',entity.currentTemperature],['target','Target temperature',entity.temperature]]){
+   const reading=document.createElement('span');reading.className='climate-reading';reading.title=label;
+   reading.setAttribute('aria-label',`${label}: ${formatTemperature(value)}`);reading.append(climateIcon(icon),document.createTextNode(formatTemperature(value)));status.append(reading);
+  }
+ }
+ if(pending){const note=document.createElement('span');note.textContent='Updating…';status.append(note)}card.append(status);
+ const buttons=document.createElement('div');buttons.className='climate-buttons';
+ for(const [action,label] of [['power','Power'],['decrease','−'],['increase','+']]){
+  const button=document.createElement('button');if(action==='power')button.append(climateIcon('power'));else button.textContent=label;button.dataset.climate=id+':'+action;
+  button.setAttribute('aria-label',`${entity?.name||title||id}: ${action==='power'?'power':action+' target temperature'}`);
+  if(action==='power'){const on=snapshot.status==='connected'&&!!entity&&!['off','unknown','unavailable'].includes(entity.state);button.setAttribute('aria-pressed',on);button.title=on?'Turn off':'Turn on';button.setAttribute('aria-label',`${entity?.name||title||id}: ${button.title}`)}
+  button.disabled=snapshot.status!=='connected'||!!pending;
+  try{const cmd=climateCommand(entity,action);if(action!=='power'&&cmd.service_data.temperature===entity.temperature)button.disabled=true}catch{button.disabled=true}
+  button.onclick=async event=>{
+   event.stopPropagation();const marker={};climatePending.set(id,marker);notify('');renderRooms();
+   try{await homeAssistant.setClimate(id,action);notify('Climate command sent. Waiting for the device to report its state.');
+    if(climatePending.get(id)!==marker)return;
+    marker.timer=setTimeout(()=>{if(climatePending.get(id)===marker){climatePending.delete(id);notify('Climate state has not confirmed yet. Check the device before trying again.');renderRooms()}},15000);
+   }catch(error){climatePending.delete(id);notify(error.message);renderRooms()}
+  };buttons.append(button);
+ }
+ card.append(buttons);container.append(card);
+}
+function renderCentral(){climatePanel.replaceChildren();climatePanel.hidden=!['upper','lower'].includes(activeView);if(!climatePanel.hidden)appendClimate(climatePanel,CENTRAL_CLIMATE,'Central climate')}
+
+const optimistic=new OptimisticControls((...args)=>homeAssistant.setEntity(...args),message=>{
+ snapshot=optimistic.project();if(message)notify(message);renderRooms();updateVisuals();
+});
+function controlEntity(id,brightness){
+ const entity=snapshot.entities.find(e=>e.id===id);if(!entity)return;
+ notify('');optimistic.set(id,entity.state!=='on',brightness);
+}
+function visibleDevices(room){return [...room.entities,...(room.fans||[])].filter(id=>{const entity=snapshot.entities.find(e=>e.id===id);return !!entity&&!entity.members?.length})}
+let adjustingBrightness=false,brightnessDraft=null;
 function appendDeviceControl(container,id,title){
  const entity=snapshot.entities.find(e=>e.id===id);if(!entity)return;
  const row=document.createElement('div');row.className='light-control';
@@ -35,34 +84,34 @@ function appendDeviceControl(container,id,title){
  if(title){const name=document.createElement('span');name.className='room-name';name.textContent=title;head.append(name)}
  const toggle=deviceButton(id);toggle.className='toggle'+(entity.state==='on'?' on':'');toggle.textContent='';head.append(toggle);row.append(head);
  if(entity.dimmable){
-  const slider=document.createElement('input');slider.type='range';slider.min=0;slider.max=100;slider.step=1;slider.value=entity.state==='off'?0:Math.round((entity.brightness??255)/255*100);slider.disabled=toggle.disabled;slider.setAttribute('aria-label',`${entity.name} brightness`);slider.title=`${slider.value}%`;
-  slider.onclick=e=>e.stopPropagation();slider.oninput=()=>{adjustingBrightness=true;slider.title=`${slider.value}%`};
-  slider.onchange=()=>{adjustingBrightness=false;controlEntity(id,Number(slider.value))};slider.onblur=()=>{if(adjustingBrightness){adjustingBrightness=false;renderRooms()}};row.append(slider);
+  const slider=document.createElement('input');slider.type='range';slider.dataset.entity=id;slider.min=0;slider.max=100;slider.step=1;slider.value=entity.state==='off'?0:Math.round((entity.brightness??255)/255*100);slider.disabled=toggle.disabled;slider.setAttribute('aria-label',`${entity.name} brightness`);slider.title=`${slider.value}%`;
+  slider.onclick=e=>e.stopPropagation();slider.oninput=()=>{adjustingBrightness=true;brightnessDraft={id,value:Number(slider.value)};slider.title=`${slider.value}%`;updateVisuals()};
+  slider.onchange=()=>{adjustingBrightness=false;brightnessDraft=null;controlEntity(id,Number(slider.value))};slider.onblur=()=>{if(adjustingBrightness){adjustingBrightness=false;brightnessDraft=null;renderRooms();updateVisuals()}};row.append(slider);
  }
  container.append(row);return toggle;
 }
 function deviceButton(id,icon=false){
  const entity=snapshot.entities.find(e=>e.id===id),button=document.createElement('button');
- const name=entity?.name||id.replace(/^(light|switch)\./,'').replaceAll('_',' ');
+ const name=entity?.name||id.replace(/^(light|switch|fan)\./,'').replaceAll('_',' ');
  const on=entity?.state==='on';button.className=(icon?'room-bulb':'device-toggle')+(on?' on':'');
- button.textContent=icon?'☀':`${name} · ${pendingControls.has(id)?'Sending…':entity?.state||'unavailable'}`;
- button.title=`${name}: ${pendingControls.has(id)?'sending':entity?.state||'unavailable'}`;
+ button.textContent=icon?(id.startsWith('fan.')?'✣':'☀'):`${name} · ${optimistic.intents.has(id)?'Updating…':entity?.state||'unavailable'}`;
+ button.title=`${name}: ${optimistic.intents.has(id)?'updating':entity?.state||'unavailable'}`;
  button.setAttribute('aria-label',`Turn ${on?'off':'on'} ${name}`);button.setAttribute('aria-pressed',on);
- button.disabled=snapshot.status!=='connected'||pendingControls.has(id)||!['on','off'].includes(entity?.state)||!!entity?.members?.length;
+ button.disabled=snapshot.status!=='connected'||!['on','off'].includes(entity?.state)||!!entity?.members?.length;
  button.onclick=e=>{e.stopPropagation();controlEntity(id)};return button;
 }
 function renderLabels(){
  labelLayer.replaceChildren();roomLabels=[];
  for(const room of rooms.filter(r=>visibleOnFloor(r,activeView,true))){
   const devices=visibleDevices(room);
-  const button=document.createElement('span');button.className='room-label passive';button.textContent=room.name;
+  const button=document.createElement('span');button.className='room-label passive';button.textContent=room.name;appendTemperature(button,room.id);
   const bulbs=document.createElement('div');bulbs.className='room-bulbs';
   for(const id of devices){
    const item=document.createElement('div');item.className='room-device';const bulb=deviceButton(id,true);item.append(bulb);
-   if(devices.length>1){const label=document.createElement('span');label.textContent=snapshot.entities.find(e=>e.id===id)?.name||id.replace(/^(light|switch)\./,'').replaceAll('_',' ');item.append(label)}
+   if(devices.length>1){const label=document.createElement('span');label.textContent=snapshot.entities.find(e=>e.id===id)?.name||id.replace(/^(light|switch|fan)\./,'').replaceAll('_',' ');item.append(label)}
    bulbs.append(item);
   }
-  const wrapper=document.createElement('div');wrapper.className='room-marker';wrapper.append(button);if(bulbs.childElementCount)wrapper.append(bulbs);labelLayer.append(wrapper);roomLabels.push({room,button:wrapper});
+  const wrapper=document.createElement('div');wrapper.className='room-marker';wrapper.append(button);if(roomClimates[room.id])appendClimate(wrapper,roomClimates[room.id]);if(bulbs.childElementCount)wrapper.append(bulbs);labelLayer.append(wrapper);roomLabels.push({room,button:wrapper});
  }
 }
 function positionLabels(){
@@ -85,8 +134,9 @@ function positionLabels(){
  }
 }
 function updateVisuals(){
+ const visualSnapshot=brightnessDraft?{...snapshot,entities:snapshot.entities.map(e=>e.id===brightnessDraft.id?{...e,state:brightnessDraft.value>0?'on':'off',brightness:Math.round(brightnessDraft.value*255/100)}:e)}:snapshot;
  uniforms.roomCount.value=rooms.length;
- rooms.forEach((room,i)=>{uniforms.roomMin.value[i].fromArray(room.min);uniforms.roomMax.value[i].fromArray(room.max);const state=roomState(room,mode,snapshot);uniforms.roomLevel.value[i]=state.level===null?-1:state.level;const points=footprintOf(room);uniforms.roomVertexCount.value[i]=points.length;points.forEach((p,j)=>uniforms.roomPoints.value[i*MAX_VERTICES+j].fromArray(p))});
+ rooms.forEach((room,i)=>{uniforms.roomMin.value[i].fromArray(room.min);uniforms.roomMax.value[i].fromArray(room.max);const state=roomState(room,mode,visualSnapshot);uniforms.roomLevel.value[i]=state.level===null?-1:state.level;const points=footprintOf(room);uniforms.roomVertexCount.value[i]=points.length;points.forEach((p,j)=>uniforms.roomPoints.value[i*MAX_VERTICES+j].fromArray(p))});
 
 }
 new GLTFLoader().load('./model/house.glb',gltf=>{
@@ -126,20 +176,31 @@ new GLTFLoader().load('./model/house.glb',gltf=>{
   material.customProgramCacheKey=()=> 'house-room-polygons-v2';material.needsUpdate=true;
  })});$('loading').hidden=true;updateVisuals();
 },event=>{if(event.total)$('loading').textContent=`Loading Nathan’s home… ${Math.round(event.loaded/event.total*100)}%`},()=>{$('loading').textContent='Could not load the model. Check that the deployed site includes model/house.glb.'});
-function setView(view){
- activeView=view;
- for(const [id,value] of [['orbit','all'],['main-floor','upper'],['basement','lower'],['outside','outside']]){const button=$(id);button.classList.toggle('active',value===view);button.setAttribute('aria-pressed',value===view)}
+function setView(route){
+ const view=route.floor;activeView=view;
+ adjustingBrightness=false;brightnessDraft=null;
+ document.title=`${route.label} · Nathan’s Home`;
+ for(const link of $('view-links').querySelectorAll('a')){
+  const selected=link.dataset.view===route.id;link.classList.toggle('active',selected);
+  if(selected)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
+ }
  renderer.clippingPlanes=['all','outside'].includes(view)?[]:view==='upper'?[new THREE.Plane(new THREE.Vector3(0,1,0),.15)]:[new THREE.Plane(new THREE.Vector3(0,-1,0),-.15)];
  renderer.domElement.hidden=view==='outside';$('outside-view').hidden=view!=='outside';
  $('show-labels').closest('label').hidden=view==='outside';
  document.querySelector('.view-caption').hidden=view==='outside';
- if(view==='all')orbit();else if(view!=='outside')top();
+ if(route.camera==='orbit')orbit();else if(route.camera==='top')top();
  renderRooms();updateVisuals();
 }
-for(const [id,view] of [['orbit','all'],['main-floor','upper'],['basement','lower'],['outside','outside']])$(id).onclick=()=>setView(view);
+for(const route of views){
+ const link=document.createElement('a');link.className='button';link.dataset.view=route.id;
+ link.href=routeURL(route,baseURL,location.href).href;link.textContent=route.label;
+ link.onclick=event=>{if(!shouldHandleLink(event))return;event.preventDefault();router.navigate(route.id)};
+ $('view-links').append(link);
+}
 $('aerial-photo').onerror=()=>{$('aerial-error').hidden=false};
 function renderOutside(){
  $('outdoor-markers').replaceChildren();
+ const garage=document.createElement('div');garage.className='room';appendTemperature(garage,'garage');appendClimate(garage,roomClimates.garage,'Garage heater');$('rooms').append(garage);
  const positions={'light.deck_light':[83,74],'light.backyard_cam_floodlight':[87,28],'light.front_door':[38,53],'light.garage':[42,75]};
  for(const [id,name] of outdoorLights){
   const card=document.createElement('div');card.className='room';const head=document.createElement('div');head.className='room-head';const heading=document.createElement('span');heading.className='room-name';heading.textContent=name;head.append(heading);card.append(head);
@@ -152,9 +213,11 @@ function renderOutside(){
 }
 function renderRooms(){
  if(adjustingBrightness)return;
- $('rooms').replaceChildren();renderLabels();
+ const focused=document.activeElement?.dataset?.entity;
+ const climateFocus=document.activeElement?.dataset?.climate;
+ $('rooms').replaceChildren();renderLabels();renderCentral();
  $('room-section-title').textContent=activeView==='outside'?'Outside':'Rooms';
- if(activeView==='outside'){renderOutside();return}
+ if(activeView==='outside'){renderOutside();restoreSliderFocus(focused);restoreClimateFocus(climateFocus);return}
 
  const primaryIDs=new Set(['primary-bedroom','primary-closet','primary-bath']);
  let primaryGroup=null;
@@ -162,7 +225,8 @@ function renderRooms(){
   const devices=visibleDevices(room);
   const card=document.createElement('div');card.className='room';
   const head=document.createElement('div');head.className='room-head';const text=document.createElement('div'),title=document.createElement('span');title.className='room-name';title.textContent=room.id==='primary-bath'?'Primary Vanity / Bath':room.name;text.append(title);head.append(text);
-  card.append(head);
+  appendTemperature(text,room.id);card.append(head);
+  if(roomClimates[room.id])appendClimate(card,roomClimates[room.id]);
   if(devices.length===1){
    const holder=document.createElement('div');const toggle=appendDeviceControl(holder,devices[0]);
    head.append(toggle);const slider=holder.querySelector('input');if(slider)card.append(slider);
@@ -172,9 +236,12 @@ function renderRooms(){
    primaryGroup.append(card);
   }else $('rooms').append(card);
  }
+ restoreSliderFocus(focused);restoreClimateFocus(climateFocus);
 }
+function restoreClimateFocus(key){if(key)for(const button of document.querySelectorAll('[data-climate]'))if(button.dataset.climate===key){button.focus({preventScroll:true});break}}
+function restoreSliderFocus(id){if(id)for(const slider of $('rooms').querySelectorAll('input[type=range]'))if(slider.dataset.entity===id)slider.focus({preventScroll:true})}
 const labels={not_configured:'Disconnected · no saved token',connecting:'Connecting to your home',connected:'Your home is connected',auth_failed:'Token rejected · open settings',disconnected:'Home offline · reconnecting',permission_denied:'Home Assistant denied access',connection_error:'Connection failed · open settings',protocol_error:'Connection error · open settings'};
-function receiveState(next){snapshot=next;$('mode-note').textContent=next.status==='connected'?'':next.status==='not_configured'?'Connect Home Assistant in settings to control your lights.':'Light controls reconnect automatically.';if($('setup').open&&snapshot.status!=='not_configured')$('connection-result').textContent=labels[snapshot.status]||snapshot.status;const indicator=$('connection'),description=labels[snapshot.status]||snapshot.status;indicator.dataset.state=snapshot.status==='connected'?'connected':['connecting','disconnected'].includes(snapshot.status)?'connecting':'disconnected';indicator.title=description;indicator.setAttribute('aria-label',description);renderRooms();updateVisuals()}
+function receiveState(next){for(const [id,pending] of climatePending){const before=snapshot.entities.find(e=>e.id===id),after=next.entities.find(e=>e.id===id);if(next.status!=='connected'||before?.state!==after?.state||before?.temperature!==after?.temperature){clearTimeout(pending.timer);climatePending.delete(id)}}if(next.status!=='connected'){adjustingBrightness=false;brightnessDraft=null;}snapshot=optimistic.reconcile(next);$('mode-note').textContent=next.status==='connected'?'':next.status==='not_configured'?'Connect Home Assistant in settings to control your lights and climate.':'Controls reconnect automatically.';if($('setup').open&&snapshot.status!=='not_configured')$('connection-result').textContent=labels[snapshot.status]||snapshot.status;const indicator=$('connection'),description=labels[snapshot.status]||snapshot.status;indicator.dataset.state=snapshot.status==='connected'?'connected':['connecting','disconnected'].includes(snapshot.status)?'connecting':'disconnected';indicator.title=description;indicator.setAttribute('aria-label',description);renderRooms();updateVisuals()}
 const homeAssistant=new HomeAssistant(receiveState);
 function restoreConnection(){
  try{
@@ -211,5 +278,6 @@ $('test-connection').onclick=async()=>{
 addEventListener('storage',event=>{if(event.key===null||[TOKEN_KEY,URL_KEY].includes(event.key))restoreConnection()});
 addEventListener('pagehide',()=>homeAssistant.stop());
 addEventListener('pageshow',event=>{if(event.persisted)restoreConnection()});
+const router=createRouter({routes:views,baseURL,onRoute:setView});
 restoreConnection();
 renderRooms();updateVisuals();renderer.setAnimationLoop(()=>{controls.update();positionLabels();renderer.render(scene,camera)});

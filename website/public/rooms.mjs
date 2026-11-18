@@ -1,4 +1,4 @@
-import {confirmedRooms} from './room-map.mjs?v=hallway-garage1';
+import {confirmedRooms} from './room-map.mjs?v=crawlspace4';
 
 export const MAX_ROOMS = 32;
 export const MAX_VERTICES = 16;
@@ -40,6 +40,7 @@ export function validateRooms(rooms) {
     ids.add(r.id);
     if (![r.min, r.max].every(v => Array.isArray(v) && v.length === 3 && v.every(n => Number.isFinite(n) && Math.abs(n) < 1000)) || r.min.some((n, i) => n >= r.max[i])) throw Error('Every minimum must be smaller than its maximum.');
     if (!Array.isArray(r.entities) || !r.entities.every(e => typeof e === 'string' && /^(light|switch)\.[a-z0-9_]+$/.test(e))) throw Error('Map only light or switch entity IDs.');
+    if (r.fans !== undefined && (!Array.isArray(r.fans) || !r.fans.every(id => typeof id === 'string' && /^fan\.[a-z0-9_]+$/.test(id)))) throw Error('Map only fan entity IDs as fans.');
     if (!Number.isFinite(r.demo) || r.demo < 0 || r.demo > 1) throw Error('Invalid demo brightness.');
     if (r.floor !== undefined && !['upper', 'lower', 'both'].includes(r.floor)) throw Error('Invalid floor.');
     if (r.references !== undefined && (!Array.isArray(r.references) || !r.references.every(s => typeof s === 'string' && s.length < 30))) throw Error('Invalid room references.');

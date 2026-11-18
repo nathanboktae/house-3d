@@ -1,5 +1,6 @@
+import {climateCommand} from './climate.mjs';
 /** Browser-only Home Assistant WebSocket client. Never authenticates asset requests. */
-export const DEFAULT_HA_URL = 'https://home-assistant.example';
+export const DEFAULT_HA_URL = '';
 export const TOKEN_KEY = 'HA_TOKEN';
 export const URL_KEY = 'HA_URL';
 
@@ -12,7 +13,8 @@ export function normalizeURL(value) {
 }
 
 export function loadConnection(storage) {
-  const url = normalizeURL(storage.getItem(URL_KEY) || DEFAULT_HA_URL);
+  const savedURL = storage.getItem(URL_KEY);
+  const url = savedURL ? normalizeURL(savedURL) : '';
   return {url, token: (storage.getItem(TOKEN_KEY) || '').trim()};
 }
 
@@ -60,11 +62,16 @@ export class HomeAssistant {
   setEntity(id, on, brightness) {
     if (this.status !== 'connected' || !this.sendCommand) return Promise.reject(new Error('Connect Home Assistant first.'));
     const entity = this.entities.get(id);
-    if (!/^(light|switch)\.[a-z0-9_]+$/.test(id) || !entity || !['on','off'].includes(entity.state) || entity.members?.length) return Promise.reject(new Error('Choose an available individual light or switch, not a group.'));
+    if (!/^(light|switch|fan)\.[a-z0-9_]+$/.test(id) || !entity || !['on','off'].includes(entity.state) || entity.members?.length) return Promise.reject(new Error('Choose an available individual light, switch, or fan, not a group.'));
     if (brightness !== undefined && (!entity.dimmable || !Number.isInteger(brightness) || brightness < 0 || brightness > 100)) return Promise.reject(new Error('Choose a dimmable light and brightness from 0 to 100.'));
     const command={type:'call_service', domain:id.split('.')[0], service:on?'turn_on':'turn_off', target:{entity_id:id}};
     if(brightness !== undefined){command.service=brightness===0?'turn_off':'turn_on';if(brightness>0)command.service_data={brightness_pct:brightness};}
     return this.sendCommand(command);
+  }
+
+  setClimate(id, action) {
+    if (this.status !== 'connected' || !this.sendCommand) return Promise.reject(new Error('Connect Home Assistant first.'));
+    try { return this.sendCommand(climateCommand(this.entities.get(id), action)); } catch(error) { return Promise.reject(error); }
   }
 
   stop(status = 'not_configured') {
@@ -82,25 +89,31 @@ export class HomeAssistant {
   }
 
   start(config) {
-    const url = normalizeURL(config.url);
     this.stop();
-    if (!config.token) return;
+    if (!config.url || !config.token) return;
+    const url = normalizeURL(config.url);
     this.config = {url, token: config.token};
     this.delay = this.retryMs;
     this.connect();
   }
 
   apply(state, id = state?.entity_id) {
-    if (typeof id !== 'string' || !/^(light|switch)\./.test(id)) return;
+    if (typeof id !== 'string' || !/^(light|switch|fan|sensor|climate)\./.test(id)) return;
     if (!state) { this.entities.delete(id); return; }
     const old = this.entities.get(id);
     if (old && old.updated > (state.last_updated || '')) return;
     const attrs = state.attributes || {};
+    if (id.startsWith('sensor.') && attrs.device_class !== 'temperature') return;
     this.entities.set(id, {
       id, name: String(attrs.friendly_name || id), state: state.state,
       members: Array.isArray(attrs.entity_id) ? attrs.entity_id : [],
       dimmable: id.startsWith('light.') && Array.isArray(attrs.supported_color_modes) && attrs.supported_color_modes.some(mode=>['brightness','color_temp','hs','xy','rgb','rgbw','rgbww','white'].includes(mode)),
       brightness: Number.isFinite(attrs.brightness) ? attrs.brightness : null,
+      unit: attrs.unit_of_measurement || '°F',
+      temperature: attrs.temperature, currentTemperature: attrs.current_temperature,
+      minTemp: attrs.min_temp, maxTemp: attrs.max_temp, step: attrs.target_temp_step,
+      hvacModes: Array.isArray(attrs.hvac_modes) ? attrs.hvac_modes : [],
+      features: attrs.supported_features || 0, action: attrs.hvac_action,
       updated: state.last_updated || '',
     });
   }

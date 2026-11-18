@@ -1,0 +1,6 @@
+[
+  {"id":"all","slug":"dollhouse","label":"Dollhouse","floor":"all","camera":"orbit"},
+  {"id":"upper","slug":"main-floor","label":"Main Floor","floor":"upper","camera":"top"},
+  {"id":"lower","slug":"basement","label":"Basement","floor":"lower","camera":"top"},
+  {"id":"outside","slug":"outside","label":"Outside","floor":"outside","camera":"none"}
+]

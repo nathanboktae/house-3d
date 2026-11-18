@@ -1,6 +1,6 @@
 # Nathan’s Home
 
-A backend-free 3D home viewer with fixed room lighting regions and direct Home Assistant updates. It runs on GitHub Pages or any HTTPS static host. The GLB is unchanged. A single compact toggle-and-slider interface controls individual Home Assistant devices directly; there is no demo/live mode switch.
+A backend-free 3D home viewer with fixed room lighting regions and direct Home Assistant updates. It runs on GitHub Pages or any HTTPS static host. The viewer uses `matterport-house/output/house-clean.glb`, a cleaned dollhouse cutaway; the original `house.glb` archive is preserved. A single compact toggle-and-slider interface controls individual Home Assistant devices directly; there is no demo/live mode switch.
 
 ## Run locally
 
@@ -24,7 +24,7 @@ Deploy **only `website/dist/`**. The allowlisted build includes the frontend, pi
 ## Connect Home Assistant
 
 1. Open **Home Assistant settings** in the website.
-2. Confirm the Home Assistant HTTPS URL (Nathan’s Nabu Casa instance is prefilled).
+2. Enter your Home Assistant HTTPS URL. No instance address or token is bundled with the site.
 3. Paste a long-lived access token into **HA_TOKEN**, then click **Save & Connect**. Create a token in your Home Assistant profile if needed.
 4. Use the room toggles and dimmers; devices are preconfigured.
 
@@ -34,7 +34,7 @@ The settings dialog does not display the saved token. Browser storage failures a
 
 ### Authentication on every request
 
-Home Assistant’s [WebSocket protocol](https://developers.home-assistant.io/docs/api/websocket/) authenticates once per socket with `{type: "auth", access_token: HA_TOKEN}`. Every subsequent command is authorized by that authenticated connection; repeating the token on every command is not part of the protocol. Each reconnect sends the saved token again. The app subscribes to `state_changed`, obtains `get_states`, and sends heartbeat `ping` messages. Live controls use `call_service` with one explicit light/switch entity ID and `turn_on` or `turn_off`, following the [HA WebSocket API](https://developers.home-assistant.io/docs/api/websocket/). No area-wide, floor-wide, or group commands are sent. Commands are not retried automatically; failures/timeouts are reported and actual state events drive the display. It does not use REST.
+Home Assistant’s [WebSocket protocol](https://developers.home-assistant.io/docs/api/websocket/) authenticates once per socket with `{type: "auth", access_token: HA_TOKEN}`. Every subsequent command is authorized by that authenticated connection; repeating the token on every command is not part of the protocol. Each reconnect sends the saved token again. The app subscribes to `state_changed`, obtains `get_states`, and sends heartbeat `ping` messages. Live controls use `call_service` with one explicit light/switch entity ID and `turn_on` or `turn_off`, following the [HA WebSocket API](https://developers.home-assistant.io/docs/api/websocket/). No area-wide, floor-wide, or group commands are sent. Commands are not retried automatically. Controls and room shading update optimistically; delayed state reports reconcile in the background. Failures/timeouts are reported and restore the latest reported state. It does not use REST.
 
 The token is sent **only to the configured Home Assistant WebSocket endpoint**. It is never appended to a URL or attached to GitHub Pages, GLB, JavaScript, or texture requests. It is never included in room-map exports, build artifacts, or application logs.
 
@@ -85,13 +85,13 @@ python3 website/build.py
 python3 -m unittest discover -s website/tests -p 'test_*.py'
 ```
 
-Tests cover browser storage and forgetting, secure URL validation, partial-storage failures, per-connection authentication, reconnects, heartbeats, subscription/snapshot ordering, stale callback protection, state filtering, permission/authentication failures, and unknown-room handling. Build checks verify the original GLB checksum, subdirectory-safe paths, and exclusion of secret/server files. Browser testing confirms the settings dialog, direct unauthenticated Nabu Casa handshake, simulated device toggles and brightness, and static GLB rendering. No actual token is required or embedded in tests.
+Tests cover browser storage and forgetting, secure URL validation, partial-storage failures, per-connection authentication, reconnects, heartbeats, subscription/snapshot ordering, stale callback protection, state filtering, permission/authentication failures, and unknown-room handling. Build checks verify the cleaned GLB checksum, subdirectory-safe paths, and exclusion of secret/server files. Browser testing confirms the settings dialog, direct unauthenticated Nabu Casa handshake, simulated device toggles and brightness, and static GLB rendering. No actual token is required or embedded in tests.
 
 Room tests also cover the confirmed map, floor filtering, concave footprints, proportional edits, and migration without losing custom mappings.
 
 ## Individual light controls
 
-Choose **Main Floor** or **Basement**. Click a sun/light icon to immediately turn that individual device on or off. Rooms with multiple devices show a separate labeled icon for each. Each command targets exactly one available entity; entities advertising group members are disabled. The sidebar uses compact toggles with gold sliders for dimmable devices. On/off-only lights and switches have no slider. Brightness is sent on release using [Home Assistant light actions](https://www.home-assistant.io/integrations/light/); zero turns the light off. No control dialog is shown. The UI reports failures and does not optimistically pretend a light changed.
+Choose **Main Floor** or **Basement**. Click a sun/light icon to immediately turn that individual device on or off. Rooms with multiple devices show a separate labeled icon for each. Each command targets exactly one available entity; entities advertising group members are disabled. The sidebar uses compact toggles with gold sliders for dimmable devices. On/off-only lights and switches have no slider. Brightness is sent on release using [Home Assistant light actions](https://www.home-assistant.io/integrations/light/); zero turns the light off. No control dialog is shown. Sliders, toggles, and room shading update immediately. Edits to each device are sent in order, coalescing queued edits to the newest value. Service acknowledgements and intermediate transition states do not reset the controls. Matching device state confirms the change; after 30 seconds without confirmation, the UI returns to the latest reported state with a notice. Rejection or disconnect also clears pending local intent. Controls remain usable while updates are pending, and keyboard focus is preserved across refreshes.
 
 
 ## View navigation and Outside
@@ -101,3 +101,29 @@ The view pills switch directly between Dollhouse (all floors, orbit), Main Floor
 Outdoor controls target `light.deck_light`, `light.backyard_cam_floodlight`, and `light.front_door` individually. Their markers sit approximately at the deck, backyard, and front entry; these are illustrative placements, not measured fixture coordinates. They follow the same connection, availability, and pending-command handling as indoor controls.
 
 Upper Hallway maps to `light.upper_hallway` (M7). Garage Light maps to `light.garage` in Outside, with an approximate garage-roof marker; the existing scan has no labeled garage region. `light.garage_door` is a different device and is not included. Both requested entities were verified in the HA inventory on October 12, 2026.
+
+Office maps to `light.office`; Kitchen maps to `light.kitchen_east_lights` and `light.kitchen_west`, verified against Home Assistant on October 12, 2026. Both kitchen devices reporting off now dims the room; a missing device correctly remains unknown rather than being assumed off.
+
+## View URLs and navigation
+
+Views use the HTML5 History API with bookmarkable paths: `dollhouse/`, `main-floor/`, `basement/`, and `outside/`. Clicking a view updates the URL without reloading the app or its Home Assistant connection. Refresh, direct links, and Back/Forward select the view from the URL. Opening a view in a new tab works through normal links. The root URL redirects in-place to `dollhouse/` using `replaceState`, so it does not create an extra Back entry. Camera orbit/zoom adjustments are not stored in the URL.
+
+`public/views.json` is the shared registry for view labels, route slugs, floor filters, and camera presets. To add another view using an existing scene mode, add a unique `id` and lowercase `slug`, plus its `label`, `floor` (`all`, `upper`, `lower`, or `outside`) and `camera` (`orbit`, `top`, or `none`), then rebuild. A new kind of scene also needs its rendering behavior added to `setView` in `app.js`; the router itself requires no changes.
+
+The build creates a physical `index.html` for each route, with shared assets anchored to the site root. This supports direct navigation and refresh on static hosts, including GitHub Pages project paths such as `/house3d/main-floor/`, without custom rewrite rules or a 404 redirect workaround. Deploy the entire `website/dist/` directory. Unknown URLs retain the host's ordinary 404 behavior.
+
+
+## Room temperatures and climate
+
+The fixed mapping in `public/climate.mjs` uses the November 18, 2026 Home Assistant inventory. Ambient readings appear on room labels and sidebar cards; unavailable/disconnected readings show “Unavailable”. Switch internal temperatures are excluded. The fifth bedroom has no temperature mapping. Nathan confirmed that Office, Dining Room, Primary Closet, and hallways/stairs have no temperature sensors. “Missing Zooz Sensor” and “Unused Bath Sensor” are unused and not installed; both are intentionally excluded.
+
+Living Room and Primary Bedroom have Power, −, and + controls on their markers and sidebar cards. Central climate sits at the left of Main Floor and Basement. Outside includes Garage Heater controls and its dedicated sensor reading. Climate values use this installation’s Fahrenheit units; sensor readings retain their reported unit.
+
+Power uses native `climate.turn_on` / `turn_off` when supported, preserving the integration’s resume behavior; older devices fall back to an advertised HVAC mode. Temperature changes use `climate.set_temperature`, respect the reported step and bounds, and do not change mode. When no target is reported (currently the Central Heater), the first adjustment starts from the reported current temperature. Commands target only the four mapped house climate entities. Controls disable during disconnect, unavailability, or pending updates; failures and missing state confirmation are shown in the notice. No actual climate service calls were made during implementation verification.
+
+Validation for this update: 41 JavaScript tests and three Python build checks pass. Browser visual QA could not complete because the preview webview failed to attach. Changes are built locally, not deployed.
+
+
+Basement Hallway, Basement Bath, and Storage Room now map to `light.basement_hallway`, `light.basement_bath`, and `light.storage_room`. The bathroom also has an independent `fan.basement_bath` toggle; fan state does not affect room lighting. Storage temperature comes from `sensor.storage_door_temperature` (the door sensor), not `sensor.storage_room_light_internaltemperature`. These mappings were verified with a read-only inventory query on November 18, 2026. Climate power buttons have a subtle white shadow when on.
+
+Crawlspace Light (`light.crawlspace_light`) has a separate basement marker and sidebar control in the right-hand extension of the storage area. Its approximate footprint is separated from Storage Room so each light shades its own region.

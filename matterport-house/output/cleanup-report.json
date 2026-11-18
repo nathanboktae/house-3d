@@ -1,0 +1,31 @@
+{
+  "input_triangles": 108289,
+  "welded_vertex_records": 263682,
+  "degenerate_faces_removed": 0,
+  "faces_above_cut_before_bisect": 3250,
+  "boundary_slivers_removed": 24,
+  "small_islands_removed": 290,
+  "island_faces_removed": 1352,
+  "boundary_vertices_relaxed": 2184,
+  "maximum_boundary_displacement_m": 0.015000463956400806,
+  "output_triangles": 103893,
+  "source": "house.glb",
+  "source_sha256": "b5205447f534a9d9381a30c46bb2fc526d0e588712937ac93138d44a0c3b7088",
+  "output": "house-clean.glb",
+  "output_sha256": "bb968a745512bb9c778f4a2be9b4ac67bf2a24849eacbeaf9d4c7d5193d789bb",
+  "wall_height_m": 2.4,
+  "bounds_gltf_y_up_m": {
+    "min": [
+      -3.3340001106262207,
+      -2.736037254333496,
+      -7.453001022338867
+    ],
+    "max": [
+      12.170019149780273,
+      2.4000000953674316,
+      2.690084934234619
+    ]
+  },
+  "glb_bytes": 23780892,
+  "blender_version": "4.5.3 LTS"
+}

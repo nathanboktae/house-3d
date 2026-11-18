@@ -10,7 +10,7 @@ uv pip install --python .venv-web/bin/python aiohttp==3.13.3 python-dotenv==1.2.
 .venv-web/bin/python website/scripts/inspect_ha_rooms.py
 ```
 
-Reads the first nonempty `HA_TOKEN` in the repository-root `.env` or `website/.env`, and optional `HA_URL`. Uses only registry list commands and `get_states`; does not change state/configuration. Stores a filtered inventory in Git-ignored `website/private/room-labeling/ha-inventory.json` with file mode 0600. Does not print or save the token. Only light/switch metadata, areas, and floors are retained. The website does not load this file or the `.env`.
+Reads the first nonempty `HA_TOKEN` in the repository-root `.env` or `website/.env`, and optional `HA_URL`. Uses only registry list commands and `get_states`; does not change state/configuration. Stores a filtered inventory in Git-ignored `website/private/room-labeling/ha-inventory.json` with file mode 0600. Does not print or save the token. Light/switch, sensor, and climate metadata, including temperature values and thermostat capabilities, areas, and floors are retained in the private inventory. The website does not load this file or the `.env`.
 
 ## Render floor references
 

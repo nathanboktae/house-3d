@@ -1,4 +1,6 @@
 import hashlib
+import json
+from urllib.parse import urljoin
 from pathlib import Path
 import unittest
 
@@ -15,9 +17,22 @@ class StaticBuildTests(unittest.TestCase):
             self.assertNotIn(p.suffix, ('.py', '.log'))
         self.assertTrue((ROOT/'dist/.nojekyll').exists())
 
-    def test_model_is_unchanged_and_paths_are_subdirectory_safe(self):
+    def test_all_routes_have_static_entry_pages_and_resolve_shared_assets(self):
+        routes = json.loads((ROOT/'dist/views.json').read_text())
+        for route in routes:
+            html = (ROOT/'dist'/route['slug']/'index.html').read_text()
+            self.assertEqual(html.count('<base '), 1)
+            self.assertIn('<base href="../">', html)
+            for prefix in ('/', '/house3d/'):
+                page = f"https://example.test{prefix}{route['slug']}/"
+                base = urljoin(page, '../')
+                for asset in ('app.js', 'router.mjs', 'views.json', 'model/house.glb', 'house-aerial-cropped.png'):
+                    self.assertEqual(urljoin(base, asset), f'https://example.test{prefix}{asset}')
+                    self.assertTrue((ROOT/'dist'/asset).is_file())
+
+    def test_clean_model_is_deployed_and_paths_are_subdirectory_safe(self):
         a = (ROOT/'dist/model/house.glb').read_bytes()
-        b = (ROOT.parent/'matterport-house/output/house.glb').read_bytes()
+        b = (ROOT.parent/'matterport-house/output/house-clean.glb').read_bytes()
         self.assertEqual(hashlib.sha256(a).digest(), hashlib.sha256(b).digest())
         html = (ROOT/'dist/index.html').read_text()
         self.assertIn('Nathan’s Home', html)

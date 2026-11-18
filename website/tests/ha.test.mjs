@@ -1,6 +1,7 @@
+const TEST_HA_URL = 'https://home-assistant.example';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {HomeAssistant, loadConnection, saveConnection, forgetConnection, normalizeURL, DEFAULT_HA_URL, testConnection} from '../public/ha.mjs';
+import {HomeAssistant, loadConnection, saveConnection, forgetConnection, normalizeURL, testConnection} from '../public/ha.mjs';
 
 class MemoryStorage {
   constructor() { this.data = new Map(); }
@@ -18,7 +19,7 @@ class Socket {
 function setup(options = {}) {
   const snapshots = [];
   const client = new HomeAssistant(s => snapshots.push(s), {Socket, retryMs: 5, ...options});
-  client.start({url: DEFAULT_HA_URL, token: 'test-only-secret'});
+  client.start({url: TEST_HA_URL, token: 'test-only-secret'});
   return {client, socket: Socket.instances.at(-1), snapshots};
 }
 function auth(socket) {
@@ -30,17 +31,17 @@ const state = (name, value, timestamp = '2026-09-28T01:00:00Z') => ({entity_id: 
 
 test('stores HA_TOKEN locally, restores it after reload, and forgets it', () => {
   const storage = new MemoryStorage();
-  assert.equal(loadConnection(storage).token, '');
-  saveConnection(storage, {url: DEFAULT_HA_URL + '/', token: ' test-only-secret '});
+  assert.deepEqual(loadConnection(storage), {url: '', token: ''});
+  saveConnection(storage, {url: TEST_HA_URL + '/', token: ' test-only-secret '});
   assert.equal(storage.getItem('HA_TOKEN'), 'test-only-secret');
-  assert.deepEqual(loadConnection(storage), {url: DEFAULT_HA_URL, token: 'test-only-secret'});
+  assert.deepEqual(loadConnection(storage), {url: TEST_HA_URL, token: 'test-only-secret'});
   forgetConnection(storage);
-  assert.equal(loadConnection(storage).token, '');
+  assert.deepEqual(loadConnection(storage), {url: '', token: ''});
 });
 
 test('does not pair an old token with a new host on partial storage failure', () => {
   const storage = new MemoryStorage();
-  saveConnection(storage, {url: DEFAULT_HA_URL, token: 'old-secret'});
+  saveConnection(storage, {url: TEST_HA_URL, token: 'old-secret'});
   storage.setItem = () => { throw Error('Quota exceeded'); };
   assert.throws(() => saveConnection(storage, {url: 'https://other.example', token: 'new-secret'}));
   assert.equal(storage.getItem('HA_TOKEN'), null);
@@ -84,7 +85,7 @@ test('rejected credentials stop retries; callbacks from replaced connections can
   const lateMessage = socket.onmessage;
   socket.receive({type: 'auth_invalid', message: 'do not expose this'});
   assert.equal(client.status, 'auth_failed'); assert.equal(client.config, null);
-  client.start({url: DEFAULT_HA_URL, token: 'replacement'});
+  client.start({url: TEST_HA_URL, token: 'replacement'});
   lateMessage({data: JSON.stringify({type: 'auth_invalid'})});
   assert.equal(client.status, 'connecting');
 });
@@ -107,7 +108,7 @@ test('heartbeat verifies liveness without resending the token', async t => {
 });
 
 test('connection probe never sends credentials or other messages', async () => {
-  const promise = testConnection(DEFAULT_HA_URL, Socket);
+  const promise = testConnection(TEST_HA_URL, Socket);
   const socket = Socket.instances.at(-1);
   socket.receive({type: 'auth_required'});
   await promise; assert.deepEqual(socket.sent, []); assert(socket.closed);
@@ -142,4 +143,23 @@ test('brightness sends one explicit dimmer target and zero turns off; rejects no
  pending=client.setEntity('light.office',true,0);command=socket.sent.at(-1);assert.equal(command.service,'turn_off');assert.equal(command.service_data,undefined);socket.receive({type:'result',id:command.id,success:true});await pending;
  for(const [id,value] of [['light.porch',40],['switch.lamp',50],['light.office',101],['light.office',NaN],['light.office',-1]])await assert.rejects(client.setEntity(id,true,value),/dimmable/);
  client.stop();
+});
+
+
+test('individual bathroom fan supports on/off without light brightness',async()=>{
+ const client=new HomeAssistant(()=>{}),calls=[];
+ client.apply({entity_id:'fan.basement_bath',state:'off',attributes:{friendly_name:'Basement Bath Fan'}});
+ client.status='connected';client.sendCommand=async command=>calls.push(command);
+ await client.setEntity('fan.basement_bath',true);
+ assert.deepEqual(calls[0],{type:'call_service',domain:'fan',service:'turn_on',target:{entity_id:'fan.basement_bath'}});
+ await assert.rejects(client.setEntity('fan.basement_bath',true,50),/dimmable/);
+ await client.setEntity('fan.basement_bath',false);
+ assert.equal(calls[1].service,'turn_off');
+});
+
+test('fresh browser does not connect without saved credentials', () => {
+  const client = new HomeAssistant(() => {}, {Socket: class {constructor() {throw new Error('Unexpected connection');}}});
+  client.start(loadConnection({getItem: () => null}));
+  assert.equal(client.status, 'not_configured');
+  assert.equal(client.config, null);
 });

@@ -12,7 +12,7 @@ from dotenv import dotenv_values
 
 ROOT = Path(__file__).resolve().parents[2]
 DEST = ROOT/'website/private/room-labeling'
-DEFAULT_URL = 'https://home-assistant.example'
+DEFAULT_URL = ''
 
 async def main():
     config = None
@@ -59,7 +59,7 @@ async def main():
     states = {e['entity_id']:e for e in results['states']}
     entities = []
     for entity_id in sorted(set(registry)|set(states)):
-        if not entity_id.startswith(('light.', 'switch.')):
+        if not entity_id.startswith(('light.', 'switch.', 'fan.', 'climate.', 'sensor.')):
             continue
         entry = registry.get(entity_id,{})
         state = states.get(entity_id,{})
@@ -76,7 +76,8 @@ async def main():
             'hidden_by':entry.get('hidden_by'),
             'entity_category':entry.get('entity_category'),
             'platform':entry.get('platform'),
-            'members':[e for e in attrs.get('entity_id',[]) if isinstance(e,str) and e.startswith(('light.','switch.'))] if isinstance(attrs.get('entity_id'),list) else [],
+            'attributes':{k:attrs[k] for k in ('device_class','unit_of_measurement','temperature','current_temperature','min_temp','max_temp','target_temp_step','target_temp_low','target_temp_high','hvac_action','hvac_modes','supported_features') if k in attrs},
+            'members':[e for e in attrs.get('entity_id',[]) if isinstance(e,str) and e.startswith(('light.','switch.','fan.'))] if isinstance(attrs.get('entity_id'),list) else [],
         })
     inventory = {
         'retrieved_at':datetime.now(timezone.utc).isoformat(),

@@ -1,0 +1,47 @@
+{
+  "blender_import": "passed",
+  "mesh_objects": 1,
+  "triangles": 103893,
+  "embedded_textures": 8,
+  "texture_sizes": [
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ]
+  ],
+  "uv_layers_present": true,
+  "bounds_match_report": true,
+  "renders": [
+    "clean-preview-front.png",
+    "clean-preview-back.png",
+    "clean-preview-top.png"
+  ]
+}

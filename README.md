@@ -2,9 +2,10 @@
 
 The completed model and reproducible conversion workflow are in [matterport-house](matterport-house/README.md).
 
-- [Textured house.glb](matterport-house/output/house.glb)
+- [Cleaned textured house model](matterport-house/output/house-clean.glb)
+- [Original scan archive](matterport-house/output/house.glb)
 - [Conversion and validation scripts](matterport-house/scripts/)
-- [Rendered preview](matterport-house/output/preview-front.png)
+- [Rendered preview](matterport-house/output/clean-preview-front.png)
 - [Original public-viewer assets](matterport-house/source/)
 
 ## Nathan’s Home
