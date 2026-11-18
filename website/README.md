@@ -127,3 +127,7 @@ Validation for this update: 41 JavaScript tests and three Python build checks pa
 Basement Hallway, Basement Bath, and Storage Room now map to `light.basement_hallway`, `light.basement_bath`, and `light.storage_room`. The bathroom also has an independent `fan.basement_bath` toggle; fan state does not affect room lighting. Storage temperature comes from `sensor.storage_door_temperature` (the door sensor), not `sensor.storage_room_light_internaltemperature`. These mappings were verified with a read-only inventory query on November 18, 2026. Climate power buttons have a subtle white shadow when on.
 
 Crawlspace Light (`light.crawlspace_light`) has a separate basement marker and sidebar control in the right-hand extension of the storage area. Its approximate footprint is separated from Storage Room so each light shades its own region.
+
+## Home Assistant hosting
+
+The repository also packages this viewer as a Home Assistant app. In this mode, HA Ingress serves the assets and a server-side WebSocket bridge connects to HA using its runtime Supervisor credential. The browser does not read or write HA credentials, and the connection settings button is hidden. The app's `default_view` option selects its initial view. See [app installation](../DOCS.md). Standalone static hosting continues to use browser local storage.

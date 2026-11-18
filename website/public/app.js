@@ -1,3 +1,4 @@
+import {loadRuntime,ingressConnection} from './runtime.mjs';
 import {roomTemperatures,roomClimates,CENTRAL_CLIMATE,roomTemperature,formatTemperature,climateCommand} from './climate.mjs';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
@@ -9,6 +10,8 @@ import {createRouter,routeURL,shouldHandleLink} from './router.mjs?v=1';
 const baseURL=new URL('.',import.meta.url);
 // Keep relative assets anchored when pushState changes the document URL.
 document.querySelector('base').href=baseURL.href;
+let runtime;
+try{runtime=await loadRuntime(baseURL)}catch{document.getElementById('loading').textContent='Could not load app settings. Reload to retry.';throw Error('App settings unavailable');}
 const views=await fetch(new URL('./views.json',baseURL)).then(response=>{if(!response.ok)throw Error('Could not load view routes.');return response.json()});
 const $=id=>document.getElementById(id),stage=$('stage');
 const rooms=structuredClone(defaults),mode='live';
@@ -245,7 +248,7 @@ function receiveState(next){for(const [id,pending] of climatePending){const befo
 const homeAssistant=new HomeAssistant(receiveState);
 function restoreConnection(){
  try{
-  const config=loadConnection(localStorage);
+  const config=runtime.mode==='ingress'?ingressConnection(baseURL):loadConnection(localStorage);
   homeAssistant.start(config);
  }catch{homeAssistant.stop();notify('Browser storage is unavailable or the saved connection is invalid. Open Home Assistant settings.')}
 }
@@ -253,6 +256,7 @@ function refreshSettings(){
  try{const saved=loadConnection(localStorage);$('ha-url').value=saved.url;$('ha-token').value='';$('ha-token').placeholder=saved.token?'Token saved · leave blank to keep it':'Paste a long-lived access token';$('token-state').textContent=saved.token?'A token is saved in this browser.':'No token saved yet.'}
  catch{$('ha-url').value=DEFAULT_HA_URL;$('token-state').textContent='Browser storage is unavailable.'}
 }
+if(runtime.mode==='ingress'){$('help').hidden=true;}
 $('help').onclick=()=>{refreshSettings();$('connection-result').textContent='';$('setup').showModal()};
 $('close-help').onclick=()=>$('setup').close();
 $('setup').addEventListener('close',()=>{$('ha-token').value=''});
@@ -275,9 +279,10 @@ $('test-connection').onclick=async()=>{
  try{await testConnection($('ha-url').value.trim());$('connection-result').textContent='Direct browser connection works. Home Assistant is ready for a token.'}
  catch(error){$('connection-result').textContent=error.message}finally{button.disabled=false}
 };
-addEventListener('storage',event=>{if(event.key===null||[TOKEN_KEY,URL_KEY].includes(event.key))restoreConnection()});
+addEventListener('storage',event=>{if(runtime.mode!=='ingress'&&(event.key===null||[TOKEN_KEY,URL_KEY].includes(event.key)))restoreConnection()});
 addEventListener('pagehide',()=>homeAssistant.stop());
 addEventListener('pageshow',event=>{if(event.persisted)restoreConnection()});
+if(runtime.mode==='ingress'&&views.some(view=>view.slug===runtime.defaultView)&&[baseURL.pathname,baseURL.pathname+'index.html'].includes(location.pathname)){history.replaceState(null,'',new URL(runtime.defaultView+'/',baseURL));}
 const router=createRouter({routes:views,baseURL,onRoute:setView});
 restoreConnection();
 renderRooms();updateVisuals();renderer.setAnimationLoop(()=>{controls.update();positionLabels();renderer.render(scene,camera)});

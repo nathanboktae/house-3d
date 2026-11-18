@@ -90,9 +90,9 @@ export class HomeAssistant {
 
   start(config) {
     this.stop();
-    if (!config.url || !config.token) return;
-    const url = normalizeURL(config.url);
-    this.config = {url, token: config.token};
+    if (!config.url || (!config.ingress && !config.token)) return;
+    const url = config.ingress ? config.url : normalizeURL(config.url);
+    this.config = {url, token: config.token, ingress: config.ingress === true};
     this.delay = this.retryMs;
     this.connect();
   }
@@ -123,7 +123,7 @@ export class HomeAssistant {
     this.entities.clear();
     this.publish('connecting');
     let socket;
-    try { socket = new this.Socket(this.config.url.replace('https:', 'wss:') + '/api/websocket'); }
+    try { socket = new this.Socket(this.config.ingress ? this.config.url : this.config.url.replace('https:', 'wss:') + '/api/websocket'); }
     catch { this.stop('connection_error'); return; }
     this.socket = socket;
     let phase = 'hello', buffered = [], nextID = 3, awaitingPong = null;
@@ -148,7 +148,7 @@ export class HomeAssistant {
         }
         if (message.type === 'auth_invalid') { this.stop('auth_failed'); return; }
         if (phase === 'hello' && message.type === 'auth_required') {
-          send({type: 'auth', access_token: this.config.token});
+          send({type: 'auth', access_token: this.config.ingress ? 'ingress' : this.config.token});
           phase = 'auth'; timeout();
         } else if (phase === 'auth' && message.type === 'auth_ok') {
           send({id: 1, type: 'subscribe_events', event_type: 'state_changed'});

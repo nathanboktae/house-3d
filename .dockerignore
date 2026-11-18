@@ -1,0 +1,15 @@
+**
+!Dockerfile
+!addon/
+!addon/server.py
+!addon/requirements.txt
+!website/
+!website/build.py
+!website/public/
+!website/public/**
+!matterport-house/
+!matterport-house/scripts/
+!matterport-house/scripts/package.json
+!matterport-house/scripts/pnpm-lock.yaml
+!matterport-house/output/
+!matterport-house/output/house-clean.glb

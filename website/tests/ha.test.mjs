@@ -163,3 +163,18 @@ test('fresh browser does not connect without saved credentials', () => {
   assert.equal(client.status, 'not_configured');
   assert.equal(client.config, null);
 });
+
+test('ingress authenticates with a non-secret placeholder and retains mount path', () => {
+  let socket;
+  class IngressSocket {
+    constructor(url) {this.url=url;this.sent=[];socket=this;}
+    send(data) {this.sent.push(JSON.parse(data));}
+    close() {}
+  }
+  const client=new HomeAssistant(()=>{}, {Socket:IngressSocket});
+  client.start({ingress:true,url:'ws://example.test/api/hassio_ingress/session/api/websocket'});
+  assert.equal(socket.url,'ws://example.test/api/hassio_ingress/session/api/websocket');
+  socket.onmessage({data:JSON.stringify({type:'auth_required'})});
+  assert.deepEqual(socket.sent,[{type:'auth',access_token:'ingress'}]);
+  client.stop();
+});
