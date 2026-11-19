@@ -5,7 +5,7 @@ import json
 
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / 'dist'
-PUBLIC_FILES = ('index.html', 'style.css', 'app.js', 'rooms.mjs', 'room-map.mjs', 'ha.mjs', 'climate.mjs', 'optimistic.mjs', 'router.mjs', 'views.json', 'runtime.mjs', 'house-aerial-cropped.png')
+PUBLIC_FILES = ('index.html', 'style.css', 'app.js', 'rooms.mjs', 'room-map.mjs', 'ha.mjs', 'climate.mjs', 'cameras.mjs', 'tesla.mjs', 'optimistic.mjs', 'router.mjs', 'views.json', 'runtime.mjs', 'house-aerial-cropped.png')
 
 def build():
     three = ROOT.parent / 'matterport-house/scripts/node_modules/three'

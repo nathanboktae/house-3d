@@ -604,7 +604,9 @@ export const confirmedRooms = [
       "M12",
       "B6"
     ],
-    "entities": [],
+    "entities": [
+      "light.entryway"
+    ],
     "min": [
       5.2542,
       -2.8,
@@ -638,7 +640,7 @@ export const confirmedRooms = [
       -0.05,
       -1.1883
     ],
-    "demo": 0.65
+    "demo": 1
   },
   {
     "id": "5th-bedroom",

@@ -18,10 +18,28 @@
 
 .primary-group{border:1px solid #ffffff20;border-radius:11px;background:#19252a;padding:13px;margin:8px 0}.primary-group h3{font-size:14px;font-weight:500;margin:0 0 8px;color:#f0d0a2}.primary-group .room{border:0;border-radius:6px;background:transparent;padding:10px 0;margin:0}.primary-group .room+.room{border-top:1px solid #ffffff10}.primary-group .room.selected .room-name{color:#f0d0a2}
 
-.view-tools{flex-wrap:wrap;right:16px}.view-tools .button{border-radius:999px}.view-tools [hidden],#stage canvas[hidden],#outside-view[hidden]{display:none}#outside-view{position:absolute;inset:90px 24px 30px;overflow:auto;padding:24px;background:#142127;border-radius:18px}#outdoor-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-top:28px}#outdoor-controls h3{font-size:14px;font-weight:500}.outside-intro h2{font:30px Georgia,serif}@media(max-width:500px){.view-tools{gap:4px}.view-tools .button{font-size:11px;padding:8px}.label-toggle{font-size:10px}#outside-view{inset:105px 12px 15px;padding:16px}}
-
-.aerial-map{position:relative;margin-top:20px}.aerial-map img{display:block;width:100%;height:auto;border-radius:12px}.outdoor-marker{position:absolute;transform:translate(-50%,-50%);width:auto;max-width:145px;margin:0;font-size:11px;background:#142127ed;text-align:center;box-shadow:0 2px 8px #0008}#outside-view a{color:#e9c38c}#outdoor-controls{margin-top:14px}.aerial-map .device-toggle.on{background:#69522bea}@media(max-width:500px){.outdoor-marker{max-width:95px;font-size:9px;padding:6px}}
-.aerial-map{width:min(100%,calc((100dvh - 320px)*1.342));margin:16px auto}.outside-intro h2{font-size:24px}.outside-intro .note{margin-bottom:0}@media(max-width:850px){.aerial-map{width:100%}}
+.view-tools{flex-wrap:wrap;right:16px}.view-tools .button{border-radius:999px}.view-tools [hidden],#stage canvas[hidden],#outside-view[hidden]{display:none}
+.outside-active main{grid-template-columns:minmax(0,1fr)}
+.outside-active aside{position:fixed;right:20px;bottom:12px;z-index:5;max-width:380px;padding:0;border:0;background:transparent}
+.outside-active aside>:not(#notice){display:none}.outside-active #notice:not(:empty){padding:12px 16px;background:#172126;border:1px solid #ffffff20;border-radius:10px}
+.outside-active #stage{background:#030506}.outside-active #loading{display:none}
+#outside-view{position:absolute;inset:0;overflow:auto;background:#030506;padding:86px 24px 20px}
+#aerial-photo{position:fixed;inset:90px 0 0;width:100%;height:calc(100dvh - 90px);object-fit:cover;opacity:.1;pointer-events:none}
+.outside-content{position:relative;max-width:1600px;margin:0 auto}.outside-intro h2{font:26px Georgia,serif;margin-bottom:18px}
+.camera-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+.camera-card{min-width:0;border:1px solid #ffffff20;border-radius:14px;overflow:hidden;background:#091014b3}
+.camera-card h3{font-size:15px;font-weight:500;margin:0;padding:12px 16px}
+.camera-garage,.camera-front-door{grid-column:span 2}.camera-backyard{grid-column:span 3}.camera-north-face{grid-column:span 1}
+.camera-frame{position:relative;aspect-ratio:16/9;background:#0009;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;overflow:hidden}
+.camera-backyard .camera-frame{aspect-ratio:10/3}.camera-north-face .camera-frame{aspect-ratio:10/9}
+.camera-frame img{position:absolute;width:100%;height:100%;object-fit:contain}
+.camera-frame [hidden]{display:none}.camera-status{position:relative;color:#a8b7be;font-size:13px;text-align:center;padding:12px;margin:0}.camera-frame button{position:relative}
+.camera-controls{padding:4px 16px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px}
+.camera-controls .light-control{min-width:160px;flex:1}.camera-controls .light-control+.light-control{border:0;padding-top:0}
+.camera-controls .room-temperature{margin-top:12px}.camera-controls .climate-control{min-width:180px}.camera-controls .room-name{font-size:14px}
+#outside-view a{color:#e9c38c}.aerial-credit{margin-bottom:0;text-align:right}
+@media(max-width:850px){.outside-active #stage{height:calc(100dvh - 75px)}#outside-view{padding:80px 16px 16px}#aerial-photo{top:75px;height:calc(100dvh - 75px)}.camera-grid{gap:12px}.camera-controls{gap:8px 16px}}
+@media(max-width:600px){.view-tools{gap:4px}.view-tools .button{font-size:11px;padding:8px}.label-toggle{font-size:10px}#outside-view{padding-top:100px}.camera-grid{grid-template-columns:minmax(0,1fr)}.camera-card{grid-column:1}.camera-north-face .camera-frame{aspect-ratio:16/9}.outside-active aside{left:16px;right:16px}}
 
 .light-control{margin-top:12px}.light-control .room-head{min-height:22px}.light-control .toggle{margin-left:auto;flex-shrink:0}.light-control input[type=range]{width:100%;accent-color:#dbb77d;margin:12px 0 0}.light-control+.light-control{padding-top:12px;border-top:1px solid #ffffff10}#mode-note:empty{display:none}
 
@@ -35,3 +53,10 @@
 .climate-status{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px}.climate-reading{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.climate-icon{width:16px;height:16px;flex-shrink:0}.room-marker .climate-status{justify-content:center}.climate-buttons{align-items:center;gap:14px}.climate-buttons button,.room-marker .climate-buttons button,.climate-buttons button:not(:disabled):hover{display:inline-flex;align-items:center;justify-content:center;border:0;padding:0;background:transparent;box-shadow:none;border-radius:0;color:#fff;font-size:20px}.climate-buttons button[aria-pressed=false]{color:#829199}.climate-buttons button[aria-pressed=true]{color:#fff}.climate-buttons button .climate-icon{width:20px;height:20px}.climate-buttons button:focus-visible{outline:2px solid #e9c38c;outline-offset:3px}
 
 .climate-buttons button[aria-pressed=true],.climate-buttons button[aria-pressed=true]:not(:disabled):hover{border-radius:50%;box-shadow:0 0 8px 1px #ffffff30}
+
+.camera-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-right:12px}.camera-heading select{min-width:0;max-width:58%;font-size:11px;padding:5px;background:#10191e}.camera-heading h3{flex-shrink:0}.camera-north-face .camera-heading{flex-wrap:wrap;padding-bottom:8px}.camera-north-face .camera-heading select{max-width:100%;margin-left:16px}
+
+.tesla-status{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;width:100%;border-top:1px solid #ffffff14;padding-top:12px;margin-top:4px;font-size:14px}.tesla-name{color:#c4d0d5}.tesla-status strong{font-variant-numeric:tabular-nums;font-weight:600}.tesla-charging{display:inline-flex;align-items:center;gap:6px;color:#8e9fa7;font-size:12px}.tesla-charging.is-charging{color:#86d99a}.tesla-charging svg{width:20px;height:20px}
+
+/* Hidden readings/device names must override the top-view display rules. */
+.room-marker [hidden]{display:none!important}

@@ -1,10 +1,12 @@
+import {teslaStatus} from './tesla.mjs?v=rollo1';
+import {outdoorCameras,findCamera,cameraStreamURL} from './cameras.mjs';
 import {loadRuntime,ingressConnection} from './runtime.mjs';
-import {roomTemperatures,roomClimates,CENTRAL_CLIMATE,roomTemperature,formatTemperature,climateCommand} from './climate.mjs';
+import {roomTemperatures,roomClimates,CENTRAL_CLIMATE,roomTemperature,formatTemperature,climateCommand} from './climate.mjs?v=roomtemps2';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {defaults,roomState,MAX_ROOMS,MAX_VERTICES,footprintOf,visibleOnFloor} from './rooms.mjs?v=crawlspace4';
-import {HomeAssistant,DEFAULT_HA_URL,TOKEN_KEY,URL_KEY,loadConnection,saveConnection,forgetConnection,normalizeURL,testConnection} from './ha.mjs?v=crawlspace4';
+import {defaults,roomState,MAX_ROOMS,MAX_VERTICES,footprintOf,visibleOnFloor} from './rooms.mjs?v=sharedchandeliers1';
+import {HomeAssistant,DEFAULT_HA_URL,TOKEN_KEY,URL_KEY,loadConnection,saveConnection,forgetConnection,normalizeURL,testConnection} from './ha.mjs?v=rollo1';
 import {OptimisticControls} from './optimistic.mjs?v=1';
 import {createRouter,routeURL,shouldHandleLink} from './router.mjs?v=1';
 const baseURL=new URL('.',import.meta.url);
@@ -20,7 +22,7 @@ function notify(text){$('notice').textContent=text}
 const scene=new THREE.Scene(),renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setClearColor(0,0);stage.append(renderer.domElement);
 const camera=new THREE.PerspectiveCamera(38,1,.1,200),controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.minDistance=4;controls.maxDistance=65;controls.maxPolarAngle=Math.PI*.92;
 let activeView='all';
-const outdoorLights=[['light.deck_light','Deck Light'],['light.backyard_cam_floodlight','Backyard Floodlight'],['light.front_door','Front Door Light'],['light.garage','Garage Light']];
+const cameraPanels=new Map();
 const center=new THREE.Vector3(4.4,1.2,-2.3);
 function orbit(){camera.up.set(0,1,0);camera.position.copy(center).add(new THREE.Vector3(17,16,17));controls.target.copy(center);controls.enableRotate=true;controls.update()}
 function top(){camera.up.set(0,0,-1);camera.position.copy(center).add(new THREE.Vector3(0,23,.001));controls.target.copy(center);controls.enableRotate=false;controls.update()}
@@ -69,7 +71,7 @@ function appendClimate(container,id,title){
  }
  card.append(buttons);container.append(card);
 }
-function renderCentral(){climatePanel.replaceChildren();climatePanel.hidden=!['upper','lower'].includes(activeView);if(!climatePanel.hidden)appendClimate(climatePanel,CENTRAL_CLIMATE,'Central climate')}
+function renderCentral(){climatePanel.replaceChildren();climatePanel.hidden=!['all','upper','lower'].includes(activeView);if(!climatePanel.hidden)appendClimate(climatePanel,CENTRAL_CLIMATE,'Central climate')}
 
 const optimistic=new OptimisticControls((...args)=>homeAssistant.setEntity(...args),message=>{
  snapshot=optimistic.project();if(message)notify(message);renderRooms();updateVisuals();
@@ -94,27 +96,57 @@ function appendDeviceControl(container,id,title){
  container.append(row);return toggle;
 }
 function deviceButton(id,icon=false){
- const entity=snapshot.entities.find(e=>e.id===id),button=document.createElement('button');
+ const button=document.createElement('button');
+ button.onclick=e=>{e.stopPropagation();controlEntity(id)};
+ updateDeviceButton(button,id,icon);return button;
+}
+function updateDeviceButton(button,id,icon=false){
+ const entity=snapshot.entities.find(e=>e.id===id);
  const name=entity?.name||id.replace(/^(light|switch|fan)\./,'').replaceAll('_',' ');
  const on=entity?.state==='on';button.className=(icon?'room-bulb':'device-toggle')+(on?' on':'');
- button.textContent=icon?(id.startsWith('fan.')?'✣':'☀'):`${name} · ${optimistic.intents.has(id)?'Updating…':entity?.state||'unavailable'}`;
+ const text=icon?(id.startsWith('fan.')?'✣':'☀'):`${name} · ${optimistic.intents.has(id)?'Updating…':entity?.state||'unavailable'}`;
+ if(button.textContent!==text)button.textContent=text;
  button.title=`${name}: ${optimistic.intents.has(id)?'updating':entity?.state||'unavailable'}`;
  button.setAttribute('aria-label',`Turn ${on?'off':'on'} ${name}`);button.setAttribute('aria-pressed',on);
  button.disabled=snapshot.status!=='connected'||!['on','off'].includes(entity?.state)||!!entity?.members?.length;
- button.onclick=e=>{e.stopPropagation();controlEntity(id)};return button;
 }
+const roomMarkerCache=new Map();
 function renderLabels(){
- labelLayer.replaceChildren();roomLabels=[];
- for(const room of rooms.filter(r=>visibleOnFloor(r,activeView,true))){
-  const devices=visibleDevices(room);
-  const button=document.createElement('span');button.className='room-label passive';button.textContent=room.name;appendTemperature(button,room.id);
-  const bulbs=document.createElement('div');bulbs.className='room-bulbs';
-  for(const id of devices){
-   const item=document.createElement('div');item.className='room-device';const bulb=deviceButton(id,true);item.append(bulb);
-   if(devices.length>1){const label=document.createElement('span');label.textContent=snapshot.entities.find(e=>e.id===id)?.name||id.replace(/^(light|switch|fan)\./,'').replaceAll('_',' ');item.append(label)}
-   bulbs.append(item);
+ // Keep marker/button nodes mounted through HA updates so hover and focus survive.
+ const visible=rooms.filter(r=>visibleOnFloor(r,activeView,true));
+ const visibleIDs=new Set(visible.map(room=>room.id));
+ for(const [id,marker] of roomMarkerCache)if(!visibleIDs.has(id)){marker.wrapper.remove();roomMarkerCache.delete(id)}
+ roomLabels=[];
+ for(const room of visible){
+  let marker=roomMarkerCache.get(room.id);
+  if(!marker){
+   const wrapper=document.createElement('div');wrapper.className='room-marker';
+   const label=document.createElement('span');label.className='room-label passive';label.append(document.createTextNode(room.name));
+   const temperature=document.createElement('span');temperature.className='room-temperature';temperature.title='Room temperature';label.append(temperature);
+   const climate=document.createElement('div');climate.style.display='contents';
+   const bulbs=document.createElement('div');bulbs.className='room-bulbs';wrapper.append(label,climate,bulbs);labelLayer.append(wrapper);
+   marker={wrapper,temperature,climate,bulbs,devices:new Map()};roomMarkerCache.set(room.id,marker);
   }
-  const wrapper=document.createElement('div');wrapper.className='room-marker';wrapper.append(button);if(roomClimates[room.id])appendClimate(wrapper,roomClimates[room.id]);if(bulbs.childElementCount)wrapper.append(bulbs);labelLayer.append(wrapper);roomLabels.push({room,button:wrapper});
+  const reading=roomTemperature(room.id,snapshot);marker.temperature.hidden=reading===null;
+  if(marker.temperature.textContent!==(reading||''))marker.temperature.textContent=reading||'';
+  const climateID=roomClimates[room.id];
+  const climateKey=JSON.stringify([snapshot.status,snapshot.entities.find(e=>e.id===climateID),climatePending.has(climateID)]);
+  if(climateID&&marker.climateKey!==climateKey){marker.climate.replaceChildren();appendClimate(marker.climate,climateID);marker.climateKey=climateKey}
+  const devices=visibleDevices(room);
+  for(const [id,device] of marker.devices)if(!devices.includes(id)){device.item.remove();marker.devices.delete(id)}
+  for(const id of devices){
+   let device=marker.devices.get(id);
+   if(!device){
+    const item=document.createElement('div');item.className='room-device';const bulb=deviceButton(id,true),label=document.createElement('span');item.append(bulb,label);marker.bulbs.append(item);
+    device={item,bulb,label};marker.devices.set(id,device);
+   }
+   updateDeviceButton(device.bulb,id,true);
+   device.label.hidden=devices.length<=1;
+   const name=snapshot.entities.find(e=>e.id===id)?.name||id.replace(/^(light|switch|fan)\./,'').replaceAll('_',' ');
+   if(device.label.textContent!==name)device.label.textContent=name;
+  }
+  marker.bulbs.hidden=!devices.length;
+  roomLabels.push({room,button:marker.wrapper});
  }
 }
 function positionLabels(){
@@ -181,6 +213,8 @@ new GLTFLoader().load('./model/house.glb',gltf=>{
 },event=>{if(event.total)$('loading').textContent=`Loading Nathan’s home… ${Math.round(event.loaded/event.total*100)}%`},()=>{$('loading').textContent='Could not load the model. Check that the deployed site includes model/house.glb.'});
 function setView(route){
  const view=route.floor;activeView=view;
+ document.body.classList.toggle('outside-active',view==='outside');
+ if(view!=='outside')stopCameras();
  adjustingBrightness=false;brightnessDraft=null;
  document.title=`${route.label} · Nathan’s Home`;
  for(const link of $('view-links').querySelectorAll('a')){
@@ -201,19 +235,71 @@ for(const route of views){
  $('view-links').append(link);
 }
 $('aerial-photo').onerror=()=>{$('aerial-error').hidden=false};
+function stopCameras(){
+ for(const panel of cameraPanels.values()){clearTimeout(panel.timer);panel.image.removeAttribute('src');panel.image.hidden=true;}
+}
+function appendTesla(container){
+ const {battery,charging,label}=teslaStatus(snapshot);
+ const row=document.createElement('div');row.className='tesla-status';
+ const name=document.createElement('span');name.className='tesla-name';name.textContent='Rollo';
+ const reading=document.createElement('strong');reading.textContent=battery===null?'Unavailable':`${battery}%`;reading.setAttribute('aria-label',`Rollo battery: ${reading.textContent}`);
+ row.append(name,reading);
+ const status=document.createElement('span');status.className='tesla-charging'+(charging?' is-charging':'');status.title=label;
+ if(charging){
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('fill','none');svg.setAttribute('stroke','currentColor');svg.setAttribute('stroke-width','1.8');svg.setAttribute('stroke-linecap','round');svg.setAttribute('stroke-linejoin','round');svg.setAttribute('aria-hidden','true');
+  const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d','M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v4');svg.append(path);status.append(svg);
+ }
+ status.append(document.createTextNode(label));row.append(status);container.append(row);
+}
 function renderOutside(){
- $('outdoor-markers').replaceChildren();
- const garage=document.createElement('div');garage.className='room';appendTemperature(garage,'garage');appendClimate(garage,roomClimates.garage,'Garage heater');$('rooms').append(garage);
- const positions={'light.deck_light':[83,74],'light.backyard_cam_floodlight':[87,28],'light.front_door':[38,53],'light.garage':[42,75]};
- for(const [id,name] of outdoorLights){
-  const card=document.createElement('div');card.className='room';const head=document.createElement('div');head.className='room-head';const heading=document.createElement('span');heading.className='room-name';heading.textContent=name;head.append(heading);card.append(head);
-  if(snapshot.entities.some(e=>e.id===id)){
-   const holder=document.createElement('div');const toggle=appendDeviceControl(holder,id);head.append(toggle);const slider=holder.querySelector('input');if(slider)card.append(slider);const marker=deviceButton(id);marker.classList.add('outdoor-marker');marker.textContent=`☀ ${name}`;marker.style.left=positions[id][0]+'%';marker.style.top=positions[id][1]+'%';$('outdoor-markers').append(marker);
+ for(const config of outdoorCameras){
+  let panel=cameraPanels.get(config.key);
+  if(!panel){
+   const card=document.createElement('section');card.className=`camera-card camera-${config.key}`;
+   const heading=document.createElement('h3');heading.textContent=config.name;
+   const header=document.createElement('div');header.className='camera-heading';
+   const select=document.createElement('select');select.setAttribute('aria-label',`${config.name} camera source`);
+   let selected='';try{selected=localStorage.getItem(`outside-camera:${config.key}`)||''}catch{}
+   select.onchange=()=>{panel.selected=select.value;try{localStorage.setItem(`outside-camera:${config.key}`,select.value)}catch{}renderOutside()};
+   header.append(heading,select);card.append(header);
+   const frame=document.createElement('div');frame.className='camera-frame';
+   const image=document.createElement('img');image.alt=`${config.name} camera feed`;image.referrerPolicy='no-referrer';image.hidden=true;
+   const status=document.createElement('p');status.className='camera-status';status.setAttribute('role','status');
+   const retry=document.createElement('button');retry.textContent='Retry feed';retry.hidden=true;
+   retry.onclick=()=>{image.removeAttribute('src');renderOutside()};
+   image.onload=()=>{clearTimeout(panel.timer);image.hidden=false;status.hidden=true;retry.hidden=true};
+   image.onerror=()=>{clearTimeout(panel.timer);image.hidden=true;status.hidden=false;status.textContent='Camera feed unavailable.';retry.hidden=false};
+   frame.append(image,status,retry);card.append(frame);
+   const controls=document.createElement('div');controls.className='camera-controls';if(config.lights.length)card.append(controls);
+   $('camera-grid').append(card);panel={image,status,retry,controls,select,selected};cameraPanels.set(config.key,panel);
   }
-  else {const note=document.createElement('p');note.className='note';note.textContent=snapshot.status==='connected'?'Device not found.':'Waiting for Home Assistant connection.';card.append(note)}
-  $('rooms').append(card);
+  const {image,status,retry,controls,select}=panel;
+  const cameras=snapshot.entities.filter(entity=>entity.id.startsWith('camera.'));
+  const values=['',...cameras.map(entity=>entity.id)];
+  if(JSON.stringify(values)!==select.dataset.options){
+   select.replaceChildren();
+   for(const id of values){const option=document.createElement('option');option.value=id;option.textContent=id?`${cameras.find(entity=>entity.id===id).name} (${id})`:'Auto-detect camera';select.append(option)}
+   select.dataset.options=JSON.stringify(values);
+  }
+  select.value=panel.selected;select.disabled=snapshot.status!=='connected';
+  const entity=panel.selected?cameras.find(entity=>entity.id===panel.selected):findCamera(snapshot.entities,config);
+  select.hidden=!!entity;
+  const source=activeView==='outside'&&!document.hidden&&snapshot.status==='connected'?cameraStreamURL(entity,homeAssistant.config):null;
+  if(source){
+   if(image.getAttribute('src')!==source){status.hidden=false;status.textContent='Connecting camera…';retry.hidden=true;clearTimeout(panel.timer);panel.timer=setTimeout(()=>{status.hidden=false;status.textContent='Camera is taking longer to connect.';retry.hidden=false},30000);image.src=source;image.hidden=false;}
+  }else{
+   clearTimeout(panel.timer);image.removeAttribute('src');image.hidden=true;status.hidden=false;retry.hidden=true;
+   status.textContent=snapshot.status!=='connected'?'Waiting for Home Assistant connection.':!entity?'Choose a camera above.':document.hidden?'Camera paused.':'Camera unavailable.';
+  }
+  controls.replaceChildren();
+  for(const [id,title] of config.lights){
+   if(snapshot.entities.some(e=>e.id===id))appendDeviceControl(controls,id,title);
+   else{const label=document.createElement('p');label.className='note';label.textContent=`${title} · unavailable`;controls.append(label)}
+  }
+  if(config.key==='garage'){appendTemperature(controls,'garage');appendClimate(controls,roomClimates.garage,'Garage heater');appendTesla(controls)}
  }
 }
+addEventListener('visibilitychange',()=>{if(document.hidden)stopCameras();else if(activeView==='outside')renderOutside()});
 function renderRooms(){
  if(adjustingBrightness)return;
  const focused=document.activeElement?.dataset?.entity;
@@ -242,7 +328,7 @@ function renderRooms(){
  restoreSliderFocus(focused);restoreClimateFocus(climateFocus);
 }
 function restoreClimateFocus(key){if(key)for(const button of document.querySelectorAll('[data-climate]'))if(button.dataset.climate===key){button.focus({preventScroll:true});break}}
-function restoreSliderFocus(id){if(id)for(const slider of $('rooms').querySelectorAll('input[type=range]'))if(slider.dataset.entity===id)slider.focus({preventScroll:true})}
+function restoreSliderFocus(id){if(id)for(const slider of document.querySelectorAll('input[type=range]'))if(slider.dataset.entity===id)slider.focus({preventScroll:true})}
 const labels={not_configured:'Disconnected · no saved token',connecting:'Connecting to your home',connected:'Your home is connected',auth_failed:'Token rejected · open settings',disconnected:'Home offline · reconnecting',permission_denied:'Home Assistant denied access',connection_error:'Connection failed · open settings',protocol_error:'Connection error · open settings'};
 function receiveState(next){for(const [id,pending] of climatePending){const before=snapshot.entities.find(e=>e.id===id),after=next.entities.find(e=>e.id===id);if(next.status!=='connected'||before?.state!==after?.state||before?.temperature!==after?.temperature){clearTimeout(pending.timer);climatePending.delete(id)}}if(next.status!=='connected'){adjustingBrightness=false;brightnessDraft=null;}snapshot=optimistic.reconcile(next);$('mode-note').textContent=next.status==='connected'?'':next.status==='not_configured'?'Connect Home Assistant in settings to control your lights and climate.':'Controls reconnect automatically.';if($('setup').open&&snapshot.status!=='not_configured')$('connection-result').textContent=labels[snapshot.status]||snapshot.status;const indicator=$('connection'),description=labels[snapshot.status]||snapshot.status;indicator.dataset.state=snapshot.status==='connected'?'connected':['connecting','disconnected'].includes(snapshot.status)?'connecting':'disconnected';indicator.title=description;indicator.setAttribute('aria-label',description);renderRooms();updateVisuals()}
 const homeAssistant=new HomeAssistant(receiveState);
@@ -280,7 +366,7 @@ $('test-connection').onclick=async()=>{
  catch(error){$('connection-result').textContent=error.message}finally{button.disabled=false}
 };
 addEventListener('storage',event=>{if(runtime.mode!=='ingress'&&(event.key===null||[TOKEN_KEY,URL_KEY].includes(event.key)))restoreConnection()});
-addEventListener('pagehide',()=>homeAssistant.stop());
+addEventListener('pagehide',()=>{stopCameras();homeAssistant.stop()});
 addEventListener('pageshow',event=>{if(event.persisted)restoreConnection()});
 if(runtime.mode==='ingress'&&views.some(view=>view.slug===runtime.defaultView)&&[baseURL.pathname,baseURL.pathname+'index.html'].includes(location.pathname)){history.replaceState(null,'',new URL(runtime.defaultView+'/',baseURL));}
 const router=createRouter({routes:views,baseURL,onRoute:setView});

@@ -69,7 +69,7 @@ The workflow installs the exact pinned viewer dependencies, runs the browser-cli
 
 The site uses the checked-in `website/public/room-map.mjs` for names, footprints, and entity mappings. Room editing, adding, drawing, importing, exporting, and reset controls have been removed. Legacy room maps in local storage are left untouched but no longer loaded. Home Assistant credentials still persist normally.
 
-The 19-room map includes one shared Stairway for M12/B6 and the combined Primary lights section. Main Floor and Basement filter the scan and sidebar. To change the fixed setup, edit the source map and rebuild the site.
+The room map includes one shared Stairway for M12/B6 and the combined Primary lights section. Entryway and Stairway both map to `light.entryway`, so their chandeliers share power and brightness. Main Floor and Basement filter the scan and sidebar. To change the fixed setup, edit the source map and rebuild the site.
 
 Any mapped entity known to be on illuminates the room, using the brightest known light's brightness. Switches use full brightness. If no mapped entity is known on but any is missing/unavailable, the room remains neutral and is labeled unknown. All-known-off rooms dim to 18% rather than disappearing. This intentionally visualizes state; it is not a physical light simulation.
 
@@ -96,11 +96,13 @@ Choose **Main Floor** or **Basement**. Click a sun/light icon to immediately tur
 
 ## View navigation and Outside
 
-The view pills switch directly between Dollhouse (all floors, orbit), Main Floor (top-down), Basement (top-down), and Outside. Outside uses Nathan’s supplied cropped Redfin/NWMLS aerial photo, bundled as `house-aerial-cropped.png` in the static build. No external image request is needed. A load error leaves the outdoor controls available.
+The view pills switch directly between Dollhouse (all floors, orbit), Main Floor (top-down), Basement (top-down), and Outside. Outside uses the bundled `house-aerial-cropped.png` at 10% opacity over a nearly black background. Garage and Front Door occupy equal columns on the top row; Backyard and North Face use a 75/25 split below. Small screens stack the feeds. Garage light, temperature, and heater controls sit under Garage; Front Door light sits under Front Door; Backyard and Deck lights sit under Backyard. North Face has no controls. Garage also shows Tesla battery percentage (`sensor.rollo_battery_level`) and a green plug icon only while `sensor.rollo_charging` reports `charging`. Missing readings are shown as unavailable.
 
-Outdoor controls target `light.deck_light`, `light.backyard_cam_floodlight`, and `light.front_door` individually. Their markers sit approximately at the deck, backyard, and front entry; these are illustrative placements, not measured fixture coordinates. They follow the same connection, availability, and pending-command handling as indoor controls.
+Camera IDs in `public/cameras.mjs` map Garage, Front Door, and Outside North HD streams plus the Backyard wide stream. Name matching and a source selector handle missing mappings; ambiguous names never select an arbitrary feed. Feeds use HA’s MJPEG camera proxy with camera-scoped access tokens, never the account token. The proxy may supply successive stills depending on the camera integration. Feed elements survive control updates, stop when Outside or the browser tab is hidden, and expose a retry action on failure. Live playback must be verified against the connected installation.
 
-Upper Hallway maps to `light.upper_hallway` (M7). Garage Light maps to `light.garage` in Outside, with an approximate garage-roof marker; the existing scan has no labeled garage region. `light.garage_door` is a different device and is not included. Both requested entities were verified in the HA inventory on October 12, 2026.
+Outdoor controls target `light.deck_light`, `light.backyard_cam_floodlight`, and `light.front_door` individually. Their controls sit below the corresponding camera feeds. They follow the same connection, availability, and pending-command handling as indoor controls.
+
+Upper Hallway maps to `light.upper_hallway` (M7). Garage Light maps to `light.garage` below the Garage camera in Outside. `light.garage_door` is a different device and is not included. Both requested entities were verified in the HA inventory on October 12, 2026.
 
 Office maps to `light.office`; Kitchen maps to `light.kitchen_east_lights` and `light.kitchen_west`, verified against Home Assistant on October 12, 2026. Both kitchen devices reporting off now dims the room; a missing device correctly remains unknown rather than being assumed off.
 
@@ -117,14 +119,14 @@ The build creates a physical `index.html` for each route, with shared assets anc
 
 The fixed mapping in `public/climate.mjs` uses the November 18, 2026 Home Assistant inventory. Ambient readings appear on room labels and sidebar cards; unavailable/disconnected readings show “Unavailable”. Switch internal temperatures are excluded. The fifth bedroom has no temperature mapping. Nathan confirmed that Office, Dining Room, Primary Closet, and hallways/stairs have no temperature sensors. “Missing Zooz Sensor” and “Unused Bath Sensor” are unused and not installed; both are intentionally excluded.
 
-Living Room and Primary Bedroom have Power, −, and + controls on their markers and sidebar cards. Central climate sits at the left of Main Floor and Basement. Outside includes Garage Heater controls and its dedicated sensor reading. Climate values use this installation’s Fahrenheit units; sensor readings retain their reported unit.
+Living Room and Primary Bedroom have Power, −, and + controls on their markers and sidebar cards. Central climate sits at the left of Dollhouse, Main Floor, and Basement. Outside includes Garage Heater controls and its dedicated sensor reading. Climate values use this installation’s Fahrenheit units; sensor readings retain their reported unit.
 
 Power uses native `climate.turn_on` / `turn_off` when supported, preserving the integration’s resume behavior; older devices fall back to an advertised HVAC mode. Temperature changes use `climate.set_temperature`, respect the reported step and bounds, and do not change mode. When no target is reported (currently the Central Heater), the first adjustment starts from the reported current temperature. Commands target only the four mapped house climate entities. Controls disable during disconnect, unavailability, or pending updates; failures and missing state confirmation are shown in the notice. No actual climate service calls were made during implementation verification.
 
-Validation for this update: 41 JavaScript tests and three Python build checks pass. Browser visual QA could not complete because the preview webview failed to attach. Changes are built locally, not deployed.
+Validation: JavaScript behavior tests, Python build checks, and Home Assistant bridge tests cover the viewer and connection logic. The local preview was checked against the connected installation.
 
 
-Basement Hallway, Basement Bath, and Storage Room now map to `light.basement_hallway`, `light.basement_bath`, and `light.storage_room`. The bathroom also has an independent `fan.basement_bath` toggle; fan state does not affect room lighting. Storage temperature comes from `sensor.storage_door_temperature` (the door sensor), not `sensor.storage_room_light_internaltemperature`. These mappings were verified with a read-only inventory query on November 18, 2026. Climate power buttons have a subtle white shadow when on.
+Basement Hallway, Basement Bath, and Storage Room now map to `light.basement_hallway`, `light.basement_bath`, and `light.storage_room`. The bathroom also has an independent `fan.basement_bath` toggle; fan state does not affect room lighting. Storage Room and Entryway temperature readings are intentionally omitted because their readings are not authoritative room temperatures. These mappings were verified with a read-only inventory query on November 18, 2026. Climate power buttons have a subtle white shadow when on.
 
 Crawlspace Light (`light.crawlspace_light`) has a separate basement marker and sidebar control in the right-hand extension of the storage area. Its approximate footprint is separated from Storage Room so each light shades its own region.
 

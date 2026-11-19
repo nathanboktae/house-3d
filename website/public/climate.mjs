@@ -1,5 +1,6 @@
 // Ambient sensors verified against Home Assistant, November 18, 2026.
 // Do not substitute switch internal temperatures for room temperatures.
+// Entryway and Storage readings are excluded: the user confirmed they are not authoritative.
 // Confirmed sensor-free: fifth bedroom, office, dining room, primary closet,
 // hallways and stairs. Missing Zooz Sensor and Unused Bath Sensor are not installed.
 export const roomTemperatures = {
@@ -9,11 +10,9 @@ export const roomTemperatures = {
  'morgans-bedroom':'sensor.morgans_bedroom_sensor_temperature',
  'living-room':'sensor.living_room_temperature',
  kitchen:'sensor.kitchen_sensor_temperature',
- entryway:'sensor.entryway_door_temperature',
  'basement-bathroom':'sensor.basement_bath_temperature',
  den:'sensor.media_room_th_sensor_temperature',
  'thomas-bedroom':'sensor.thomas_bedroom_sensor_temperature',
- 'storage-room':'sensor.storage_door_temperature',
  laundry:'sensor.washer_door_device_temperature',
  garage:'sensor.garage_sensor_temperature',
 };

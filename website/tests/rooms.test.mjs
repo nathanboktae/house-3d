@@ -25,7 +25,7 @@ test('confirmed map includes all references, one shared stairway, and both Den l
  assert.deepEqual(defaults.find(r=>r.id==='den').entities,['light.den','light.media']);
  const hall=defaults.find(r=>r.id==='basement-hallway');
  assert.equal(hall.name,'Basement Hallway');assert.deepEqual(hall.entities,['light.basement_hallway']);
- assert.equal(defaults.flatMap(r=>r.entities).length,21);
+ assert.equal(new Set(defaults.flatMap(r=>r.entities)).size,21);
  assert.ok(!defaults.flatMap(r=>r.entities).includes('light.front_door'));
  for(const r of defaults)assert.ok(pointInFootprint([r.labelPosition[0],r.labelPosition[2]],footprintOf(r)),r.name);
 });
@@ -102,4 +102,13 @@ test('crawlspace has its own light and marker to the right of storage',()=>{
  assert.equal(crawl.floor,'lower');
  assert.ok(crawl.labelPosition[0]>storage.labelPosition[0]);
  assert.ok(!pointInFootprint([crawl.labelPosition[0],crawl.labelPosition[2]],footprintOf(storage)));
+});
+
+test('Entryway and Stairway chandeliers share power and dimming on one circuit',()=>{
+ const entry=defaults.find(r=>r.id==='entryway'),stairs=defaults.find(r=>r.id==='stairway');
+ assert.deepEqual(stairs.entities,entry.entities);
+ for(const entity of [{id:'light.entryway',state:'off'},{id:'light.entryway',state:'on',brightness:128},{id:'light.entryway',state:'unavailable'}]){
+  const snapshot={status:'connected',entities:[entity]};
+  assert.deepEqual(roomState(stairs,'live',snapshot),roomState(entry,'live',snapshot));
+ }
 });

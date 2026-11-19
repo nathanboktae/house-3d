@@ -1,4 +1,5 @@
-import {climateCommand} from './climate.mjs';
+import {teslaSensors} from './tesla.mjs?v=rollo1';
+import {climateCommand} from './climate.mjs?v=roomtemps2';
 /** Browser-only Home Assistant WebSocket client. Never authenticates asset requests. */
 export const DEFAULT_HA_URL = '';
 export const TOKEN_KEY = 'HA_TOKEN';
@@ -98,12 +99,12 @@ export class HomeAssistant {
   }
 
   apply(state, id = state?.entity_id) {
-    if (typeof id !== 'string' || !/^(light|switch|fan|sensor|climate)\./.test(id)) return;
+    if (typeof id !== 'string' || !/^(light|switch|fan|sensor|climate|camera)\./.test(id)) return;
     if (!state) { this.entities.delete(id); return; }
     const old = this.entities.get(id);
     if (old && old.updated > (state.last_updated || '')) return;
     const attrs = state.attributes || {};
-    if (id.startsWith('sensor.') && attrs.device_class !== 'temperature') return;
+    if (id.startsWith('sensor.') && attrs.device_class !== 'temperature' && !teslaSensors.has(id)) return;
     this.entities.set(id, {
       id, name: String(attrs.friendly_name || id), state: state.state,
       members: Array.isArray(attrs.entity_id) ? attrs.entity_id : [],
@@ -114,6 +115,7 @@ export class HomeAssistant {
       minTemp: attrs.min_temp, maxTemp: attrs.max_temp, step: attrs.target_temp_step,
       hvacModes: Array.isArray(attrs.hvac_modes) ? attrs.hvac_modes : [],
       features: attrs.supported_features || 0, action: attrs.hvac_action,
+      cameraToken: id.startsWith('camera.') ? attrs.access_token : undefined,
       updated: state.last_updated || '',
     });
   }
