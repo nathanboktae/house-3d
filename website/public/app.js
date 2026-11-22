@@ -9,6 +9,8 @@ import {defaults,roomState,MAX_ROOMS,MAX_VERTICES,footprintOf,visibleOnFloor} fr
 import {HomeAssistant,DEFAULT_HA_URL,TOKEN_KEY,URL_KEY,loadConnection,saveConnection,forgetConnection,normalizeURL,testConnection} from './ha.mjs?v=rollo1';
 import {OptimisticControls} from './optimistic.mjs?v=1';
 import {createRouter,routeURL,shouldHandleLink} from './router.mjs?v=1';
+const tvMode=['1','true',''].includes(new URLSearchParams(location.search).get('tv'));
+document.body.classList.toggle('tv-mode',tvMode);
 const baseURL=new URL('.',import.meta.url);
 // Keep relative assets anchored when pushState changes the document URL.
 document.querySelector('base').href=baseURL.href;
@@ -20,13 +22,51 @@ const rooms=structuredClone(defaults),mode='live';
 let snapshot={status:'not_configured',entities:[]},model=null;
 function notify(text){$('notice').textContent=text}
 const scene=new THREE.Scene(),renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setClearColor(0,0);stage.append(renderer.domElement);
-const camera=new THREE.PerspectiveCamera(38,1,.1,200),controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.minDistance=4;controls.maxDistance=65;controls.maxPolarAngle=Math.PI*.92;
+const camera=new THREE.PerspectiveCamera(38,1,.1,200),controls=new OrbitControls(camera,renderer.domElement);controls.enabled=!tvMode;controls.enableDamping=!tvMode;controls.minDistance=4;controls.maxDistance=65;controls.maxPolarAngle=Math.PI*.92;
 let activeView='all';
 const cameraPanels=new Map();
 const center=new THREE.Vector3(4.4,1.2,-2.3);
 function orbit(){camera.up.set(0,1,0);camera.position.copy(center).add(new THREE.Vector3(17,16,17));controls.target.copy(center);controls.enableRotate=true;controls.update()}
-function top(){camera.up.set(0,0,-1);camera.position.copy(center).add(new THREE.Vector3(0,23,.001));controls.target.copy(center);controls.enableRotate=false;controls.update()}
-new ResizeObserver(()=>{const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix()}).observe(stage);
+const tvFloorBounds=new Map();
+function fitTVFloor(){
+ if(!tvMode||!model||!['upper','lower'].includes(activeView))return;
+ let bounds=tvFloorBounds.get(activeView);
+ if(!bounds){
+  bounds=new THREE.Box3();const point=new THREE.Vector3();
+  model.updateMatrixWorld(true);
+  model.traverse(object=>{
+   if(!object.isMesh)return;
+   const positions=object.geometry.getAttribute('position');
+   for(let i=0;i<positions.count;i++){
+    point.fromBufferAttribute(positions,i).applyMatrix4(object.matrixWorld);
+    if(activeView==='upper'?point.y>=-.15:point.y<=-.15)bounds.expandByPoint(point);
+   }
+  });
+  if(bounds.isEmpty())return;
+  tvFloorBounds.set(activeView,bounds);
+ }
+ const midpoint=bounds.getCenter(new THREE.Vector3());
+ // Fit both axes into 84% of the viewport: 8% clear space on each edge.
+ const tangent=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
+ let elevation=bounds.max.y+camera.near;
+ const point=new THREE.Vector3();
+ model.traverse(object=>{
+  if(!object.isMesh)return;
+  const positions=object.geometry.getAttribute('position');
+  for(let i=0;i<positions.count;i++){
+   point.fromBufferAttribute(positions,i).applyMatrix4(object.matrixWorld);
+   if(activeView==='upper'?point.y<-.15:point.y>-.15)continue;
+   elevation=Math.max(elevation,point.y+Math.max(Math.abs(point.x-midpoint.x)/camera.aspect,Math.abs(point.z-midpoint.z))/(tangent*.84));
+  }
+ });
+ controls.target.copy(midpoint);
+ camera.up.set(0,0,-1);
+ camera.position.set(midpoint.x,elevation,midpoint.z);
+ camera.lookAt(midpoint);
+ controls.update();
+}
+function top(){camera.up.set(0,0,-1);camera.position.copy(center).add(new THREE.Vector3(0,23,.001));controls.target.copy(center);controls.enableRotate=false;controls.update();fitTVFloor()}
+new ResizeObserver(()=>{const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();fitTVFloor()}).observe(stage);
 const uniforms={roomMin:{value:Array.from({length:MAX_ROOMS},()=>new THREE.Vector3())},roomMax:{value:Array.from({length:MAX_ROOMS},()=>new THREE.Vector3())},roomLevel:{value:Array(MAX_ROOMS).fill(-1)},roomCount:{value:0},roomVertexCount:{value:Array(MAX_ROOMS).fill(0)},roomPoints:{value:Array.from({length:MAX_ROOMS*MAX_VERTICES},()=>new THREE.Vector2())}};
 const labelLayer=document.createElement('div');labelLayer.className='room-labels';stage.append(labelLayer);
 let roomLabels=[];
@@ -59,10 +99,10 @@ function appendClimate(container,id,title){
   const button=document.createElement('button');if(action==='power')button.append(climateIcon('power'));else button.textContent=label;button.dataset.climate=id+':'+action;
   button.setAttribute('aria-label',`${entity?.name||title||id}: ${action==='power'?'power':action+' target temperature'}`);
   if(action==='power'){const on=snapshot.status==='connected'&&!!entity&&!['off','unknown','unavailable'].includes(entity.state);button.setAttribute('aria-pressed',on);button.title=on?'Turn off':'Turn on';button.setAttribute('aria-label',`${entity?.name||title||id}: ${button.title}`)}
-  button.disabled=snapshot.status!=='connected'||!!pending;
+  button.disabled=tvMode||snapshot.status!=='connected'||!!pending;
   try{const cmd=climateCommand(entity,action);if(action!=='power'&&cmd.service_data.temperature===entity.temperature)button.disabled=true}catch{button.disabled=true}
   button.onclick=async event=>{
-   event.stopPropagation();const marker={};climatePending.set(id,marker);notify('');renderRooms();
+   event.stopPropagation();if(tvMode)return;const marker={};climatePending.set(id,marker);notify('');renderRooms();
    try{await homeAssistant.setClimate(id,action);notify('Climate command sent. Waiting for the device to report its state.');
     if(climatePending.get(id)!==marker)return;
     marker.timer=setTimeout(()=>{if(climatePending.get(id)===marker){climatePending.delete(id);notify('Climate state has not confirmed yet. Check the device before trying again.');renderRooms()}},15000);
@@ -77,6 +117,7 @@ const optimistic=new OptimisticControls((...args)=>homeAssistant.setEntity(...ar
  snapshot=optimistic.project();if(message)notify(message);renderRooms();updateVisuals();
 });
 function controlEntity(id,brightness){
+ if(tvMode)return;
  const entity=snapshot.entities.find(e=>e.id===id);if(!entity)return;
  notify('');optimistic.set(id,entity.state!=='on',brightness);
 }
@@ -108,7 +149,7 @@ function updateDeviceButton(button,id,icon=false){
  if(button.textContent!==text)button.textContent=text;
  button.title=`${name}: ${optimistic.intents.has(id)?'updating':entity?.state||'unavailable'}`;
  button.setAttribute('aria-label',`Turn ${on?'off':'on'} ${name}`);button.setAttribute('aria-pressed',on);
- button.disabled=snapshot.status!=='connected'||!['on','off'].includes(entity?.state)||!!entity?.members?.length;
+ button.disabled=tvMode||snapshot.status!=='connected'||!['on','off'].includes(entity?.state)||!!entity?.members?.length;
 }
 const roomMarkerCache=new Map();
 function renderLabels(){
@@ -182,6 +223,20 @@ new GLTFLoader().load('./model/house.glb',gltf=>{
    shader.vertexShader='varying vec3 housePosition;\n'+shader.vertexShader;
    shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\nhousePosition = (modelMatrix * vec4(transformed, 1.0)).xyz;');
    shader.fragmentShader=`varying vec3 housePosition;\nuniform vec3 roomMin[${MAX_ROOMS}];\nuniform vec3 roomMax[${MAX_ROOMS}];\nuniform float roomLevel[${MAX_ROOMS}];\nuniform int roomCount;\nuniform int roomVertexCount[${MAX_ROOMS}];\nuniform vec2 roomPoints[${MAX_ROOMS*MAX_VERTICES}];
+   float roomEdgeDistance(int room,vec2 p){
+    float distanceToEdge=10000.0;
+    int count=roomVertexCount[room];
+    vec2 previous=roomPoints[room*${MAX_VERTICES}+count-1];
+    for(int v=0;v<${MAX_VERTICES};v++){
+     if(v>=count)break;
+     vec2 current=roomPoints[room*${MAX_VERTICES}+v];
+     vec2 segment=current-previous;
+     float t=clamp(dot(p-previous,segment)/max(dot(segment,segment),0.000001),0.0,1.0);
+     distanceToEdge=min(distanceToEdge,length(p-(previous+t*segment)));
+     previous=current;
+    }
+    return distanceToEdge;
+   }
    bool insideRoom(int room,vec2 p){
     bool inside=false;int count=roomVertexCount[room];
     vec2 previous=roomPoints[room*${MAX_VERTICES}+count-1];
@@ -195,26 +250,32 @@ new GLTFLoader().load('./model/house.glb',gltf=>{
     return inside;
    }\n`+shader.fragmentShader;
    shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
+    vec3 roomMultiplier=vec3(1.0);
+    float strongestMask=0.0;
     for(int room=0;room<${MAX_ROOMS};room++){
       if(room>=roomCount) break;
       if(roomLevel[room]<0.0) continue;
       vec3 outside=max(roomMin[room]-housePosition,housePosition-roomMax[room]);
       float edge=max(outside.x,max(outside.y,outside.z));
       if(edge>0.0 || !insideRoom(room,housePosition.xz))continue;
-      float mask=1.0;
+      // Feather approximate room footprints instead of drawing hard rectangles.
+      float mask=smoothstep(0.0,0.12,roomEdgeDistance(room,housePosition.xz));
       float power=mix(0.18,1.12,roomLevel[room]);
       vec3 tint=mix(vec3(0.76,0.85,1.0),vec3(1.0,0.96,0.86),roomLevel[room]);
-      outgoingLight=mix(outgoingLight,outgoingLight*power*tint,mask);
+      // Overlapping footprints must not dim the same surface twice.
+      if(mask>strongestMask){roomMultiplier=mix(vec3(1.0),power*tint,mask);strongestMask=mask;}
     }
+    outgoingLight*=roomMultiplier;
     #include <opaque_fragment>`);
   };
-  material.customProgramCacheKey=()=> 'house-room-polygons-v2';material.needsUpdate=true;
- })});$('loading').hidden=true;updateVisuals();
+  material.customProgramCacheKey=()=> 'house-room-polygons-v3';material.needsUpdate=true;
+ })});$('loading').hidden=true;fitTVFloor();updateVisuals();
 },event=>{if(event.total)$('loading').textContent=`Loading Nathan’s home… ${Math.round(event.loaded/event.total*100)}%`},()=>{$('loading').textContent='Could not load the model. Check that the deployed site includes model/house.glb.'});
 function setView(route){
  const view=route.floor;activeView=view;
  document.body.classList.toggle('outside-active',view==='outside');
- if(view!=='outside')stopCameras();
+ if(view!=='outside'&&!tvMode)stopCameras();
+ if(tvMode)$('tv-title').textContent=view==='outside'?'Garage':route.label;
  adjustingBrightness=false;brightnessDraft=null;
  document.title=`${route.label} · Nathan’s Home`;
  for(const link of $('view-links').querySelectorAll('a')){
@@ -263,12 +324,12 @@ function renderOutside(){
    select.onchange=()=>{panel.selected=select.value;try{localStorage.setItem(`outside-camera:${config.key}`,select.value)}catch{}renderOutside()};
    header.append(heading,select);card.append(header);
    const frame=document.createElement('div');frame.className='camera-frame';
-   const image=document.createElement('img');image.alt=`${config.name} camera feed`;image.referrerPolicy='no-referrer';image.hidden=true;
+   const image=document.createElement('img');image.alt=`${config.name} camera feed`;image.loading='eager';image.referrerPolicy='no-referrer';image.hidden=true;
    const status=document.createElement('p');status.className='camera-status';status.setAttribute('role','status');
-   const retry=document.createElement('button');retry.textContent='Retry feed';retry.hidden=true;
+   const retry=document.createElement('button');retry.disabled=tvMode;retry.textContent='Retry feed';retry.hidden=true;
    retry.onclick=()=>{image.removeAttribute('src');renderOutside()};
    image.onload=()=>{clearTimeout(panel.timer);image.hidden=false;status.hidden=true;retry.hidden=true};
-   image.onerror=()=>{clearTimeout(panel.timer);image.hidden=true;status.hidden=false;status.textContent='Camera feed unavailable.';retry.hidden=false};
+   image.onerror=()=>{clearTimeout(panel.timer);image.hidden=true;status.hidden=false;status.textContent='Camera feed unavailable.';retry.hidden=false;if(tvMode&&!document.hidden)panel.timer=setTimeout(()=>{image.removeAttribute('src');renderOutside()},10000)};
    frame.append(image,status,retry);card.append(frame);
    const controls=document.createElement('div');controls.className='camera-controls';if(config.lights.length)card.append(controls);
    $('camera-grid').append(card);panel={image,status,retry,controls,select,selected};cameraPanels.set(config.key,panel);
@@ -281,10 +342,10 @@ function renderOutside(){
    for(const id of values){const option=document.createElement('option');option.value=id;option.textContent=id?`${cameras.find(entity=>entity.id===id).name} (${id})`:'Auto-detect camera';select.append(option)}
    select.dataset.options=JSON.stringify(values);
   }
-  select.value=panel.selected;select.disabled=snapshot.status!=='connected';
+  select.value=panel.selected;select.disabled=tvMode||snapshot.status!=='connected';
   const entity=panel.selected?cameras.find(entity=>entity.id===panel.selected):findCamera(snapshot.entities,config);
   select.hidden=!!entity;
-  const source=activeView==='outside'&&!document.hidden&&snapshot.status==='connected'?cameraStreamURL(entity,homeAssistant.config):null;
+  const source=(tvMode||activeView==='outside')&&!document.hidden&&snapshot.status==='connected'?cameraStreamURL(entity,homeAssistant.config):null;
   if(source){
    if(image.getAttribute('src')!==source){status.hidden=false;status.textContent='Connecting camera…';retry.hidden=true;clearTimeout(panel.timer);panel.timer=setTimeout(()=>{status.hidden=false;status.textContent='Camera is taking longer to connect.';retry.hidden=false},30000);image.src=source;image.hidden=false;}
   }else{
@@ -299,14 +360,15 @@ function renderOutside(){
   if(config.key==='garage'){appendTemperature(controls,'garage');appendClimate(controls,roomClimates.garage,'Garage heater');appendTesla(controls)}
  }
 }
-addEventListener('visibilitychange',()=>{if(document.hidden)stopCameras();else if(activeView==='outside')renderOutside()});
+addEventListener('visibilitychange',()=>{if(document.hidden)stopCameras();else if(tvMode||activeView==='outside')renderOutside()});
 function renderRooms(){
  if(adjustingBrightness)return;
  const focused=document.activeElement?.dataset?.entity;
  const climateFocus=document.activeElement?.dataset?.climate;
  $('rooms').replaceChildren();renderLabels();renderCentral();
  $('room-section-title').textContent=activeView==='outside'?'Outside':'Rooms';
- if(activeView==='outside'){renderOutside();restoreSliderFocus(focused);restoreClimateFocus(climateFocus);return}
+ if(tvMode||activeView==='outside')renderOutside();
+ if(activeView==='outside'){restoreSliderFocus(focused);restoreClimateFocus(climateFocus);return}
 
  const primaryIDs=new Set(['primary-bedroom','primary-closet','primary-bath']);
  let primaryGroup=null;
@@ -330,7 +392,7 @@ function renderRooms(){
 function restoreClimateFocus(key){if(key)for(const button of document.querySelectorAll('[data-climate]'))if(button.dataset.climate===key){button.focus({preventScroll:true});break}}
 function restoreSliderFocus(id){if(id)for(const slider of document.querySelectorAll('input[type=range]'))if(slider.dataset.entity===id)slider.focus({preventScroll:true})}
 const labels={not_configured:'Disconnected · no saved token',connecting:'Connecting to your home',connected:'Your home is connected',auth_failed:'Token rejected · open settings',disconnected:'Home offline · reconnecting',permission_denied:'Home Assistant denied access',connection_error:'Connection failed · open settings',protocol_error:'Connection error · open settings'};
-function receiveState(next){for(const [id,pending] of climatePending){const before=snapshot.entities.find(e=>e.id===id),after=next.entities.find(e=>e.id===id);if(next.status!=='connected'||before?.state!==after?.state||before?.temperature!==after?.temperature){clearTimeout(pending.timer);climatePending.delete(id)}}if(next.status!=='connected'){adjustingBrightness=false;brightnessDraft=null;}snapshot=optimistic.reconcile(next);$('mode-note').textContent=next.status==='connected'?'':next.status==='not_configured'?'Connect Home Assistant in settings to control your lights and climate.':'Controls reconnect automatically.';if($('setup').open&&snapshot.status!=='not_configured')$('connection-result').textContent=labels[snapshot.status]||snapshot.status;const indicator=$('connection'),description=labels[snapshot.status]||snapshot.status;indicator.dataset.state=snapshot.status==='connected'?'connected':['connecting','disconnected'].includes(snapshot.status)?'connecting':'disconnected';indicator.title=description;indicator.setAttribute('aria-label',description);renderRooms();updateVisuals()}
+function receiveState(next){for(const [id,pending] of climatePending){const before=snapshot.entities.find(e=>e.id===id),after=next.entities.find(e=>e.id===id);if(next.status!=='connected'||before?.state!==after?.state||before?.temperature!==after?.temperature){clearTimeout(pending.timer);climatePending.delete(id)}}if(next.status!=='connected'){adjustingBrightness=false;brightnessDraft=null;}snapshot=optimistic.reconcile(next);$('mode-note').textContent=next.status==='connected'?'':next.status==='not_configured'?'Connect Home Assistant in settings to control your lights and climate.':'Controls reconnect automatically.';if($('setup').open&&snapshot.status!=='not_configured')$('connection-result').textContent=labels[snapshot.status]||snapshot.status;const indicator=$('connection'),description=labels[snapshot.status]||snapshot.status;if(tvMode)$('tv-status').textContent=snapshot.status==='connected'?'':description;indicator.dataset.state=snapshot.status==='connected'?'connected':['connecting','disconnected'].includes(snapshot.status)?'connecting':'disconnected';indicator.title=description;indicator.setAttribute('aria-label',description);renderRooms();updateVisuals()}
 const homeAssistant=new HomeAssistant(receiveState);
 function restoreConnection(){
  try{
@@ -368,7 +430,21 @@ $('test-connection').onclick=async()=>{
 addEventListener('storage',event=>{if(runtime.mode!=='ingress'&&(event.key===null||[TOKEN_KEY,URL_KEY].includes(event.key)))restoreConnection()});
 addEventListener('pagehide',()=>{stopCameras();homeAssistant.stop()});
 addEventListener('pageshow',event=>{if(event.persisted)restoreConnection()});
-if(runtime.mode==='ingress'&&views.some(view=>view.slug===runtime.defaultView)&&[baseURL.pathname,baseURL.pathname+'index.html'].includes(location.pathname)){history.replaceState(null,'',new URL(runtime.defaultView+'/',baseURL));}
-const router=createRouter({routes:views,baseURL,onRoute:setView});
+if(runtime.mode==='ingress'&&views.some(view=>view.slug===runtime.defaultView)&&[baseURL.pathname,baseURL.pathname+'index.html'].includes(location.pathname)){history.replaceState(null,'',routeURL(views.find(view=>view.slug===runtime.defaultView),baseURL,location.href));}
+// TV rotation stays out of browser history and keeps the bookmarked URL stable.
+let router;
+if(tvMode){
+ const sequence=['upper','lower','outside'].map(id=>views.find(view=>view.id===id));
+ let index=0;
+ setView(sequence[index]);
+ setInterval(()=>{
+  if(document.hidden)return;
+  stage.classList.add('tv-fading');
+  setTimeout(()=>{
+   index=(index+1)%sequence.length;setView(sequence[index]);
+   stage.classList.remove('tv-fading');
+  },350);
+ },12000);
+}else router=createRouter({routes:views,baseURL,onRoute:setView});
 restoreConnection();
 renderRooms();updateVisuals();renderer.setAnimationLoop(()=>{controls.update();positionLabels();renderer.render(scene,camera)});

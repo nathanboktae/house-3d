@@ -17,7 +17,7 @@ test('HA updates preserve mounted light buttons while updating their state',()=>
  const room={id:'entryway',name:'Entryway',entities:['light.entryway']};
  const snapshot={status:'connected',entities:[{id:'light.entryway',name:'Entryway',state:'off'}]};
  const layer=new Element('div');
- const context=vm.createContext({document:{createElement:tag=>new Element(tag),createTextNode:text=>({textContent:text})},snapshot,rooms:[room],activeView:'upper',labelLayer:layer,roomLabels:[],visibleOnFloor:()=>true,visibleDevices:r=>r.entities,roomTemperature:()=>null,roomClimates:{},climatePending:new Map(),optimistic:{intents:new Map()},controlEntity:()=>{}});
+ const context=vm.createContext({tvMode:false,document:{createElement:tag=>new Element(tag),createTextNode:text=>({textContent:text})},snapshot,rooms:[room],activeView:'upper',labelLayer:layer,roomLabels:[],visibleOnFloor:()=>true,visibleDevices:r=>r.entities,roomTemperature:()=>null,roomClimates:{},climatePending:new Map(),optimistic:{intents:new Map()},controlEntity:()=>{}});
  vm.runInContext(markerCode,context);
  vm.runInContext('renderLabels()',context);
  const marker=layer.children[0],bulb=marker.children[2].children[0].children[0];

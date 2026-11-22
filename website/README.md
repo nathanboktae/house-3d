@@ -133,3 +133,11 @@ Crawlspace Light (`light.crawlspace_light`) has a separate basement marker and s
 ## Home Assistant hosting
 
 The repository also packages this viewer as a Home Assistant app. In this mode, HA Ingress serves the assets and a server-side WebSocket bridge connects to HA using its runtime Supervisor credential. The browser does not read or write HA credentials, and the connection settings button is hidden. The app's `default_view` option selects its initial view. See [app installation](../DOCS.md). Standalone static hosting continues to use browser local storage.
+
+## TV mode
+
+Append `?tv=1` to any viewer URL (for example `/main-floor/?tv=1`). TV mode cycles Main Floor → Basement → Garage every twelve seconds with a short fade between views, using the existing Outside camera layout for Garage. The URL stays stable and rotations do not add browser history entries. Remove the query parameter and reload to return to normal controls.
+
+The header, sidebar, navigation, and camera source selectors are hidden. A simple view title and connection warnings remain visible; room temperatures, device states, climate readings, and Tesla status continue updating. Light/climate controls and camera movement are disabled. Configure the connection and camera sources in normal mode first.
+
+Camera image nodes stay mounted and all camera streams connect as soon as Home Assistant connects, including during the indoor views. Streams remain active across rotations, avoiding a fresh connection each time Garage appears. This uses continuous camera bandwidth. Hiding the browser tab pauses streams and rotation; returning resumes them. Camera availability still depends on Home Assistant and the camera integration.

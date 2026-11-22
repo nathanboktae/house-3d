@@ -36,3 +36,11 @@ docker build -t house-3d:local .
 Bridge tests use a synthetic HA endpoint; they never control real devices. They cover ingress peer checks, token isolation, WebSocket forwarding, upstream failure, and static paths. Installing in your HA instance remains the final end-to-end test.
 
 If the viewer cannot connect, check that HA Core is running, then restart the app. The app needs `homeassistant_api: true` and its Supervisor-provided token. Do not add a token to the configuration or expose port 8099 directly to work around an ingress error.
+
+## TV mode
+
+After opening the app through Home Assistant, append `?tv=1` to the viewer URL. Main Floor, Basement, and Garage rotate every 12 seconds with a fade. Floor views fit the display with at least 8% margins. Navigation and controls are disabled while readings remain live. Remove the parameter and reload to restore normal mode.
+
+## Updating
+
+Refresh the app store repository, open House 3D, and install the available update. Home Assistant builds the new version locally and restarts the app; refresh any open viewer tabs afterward.

@@ -60,3 +60,31 @@
 
 /* Hidden readings/device names must override the top-view display rules. */
 .room-marker [hidden]{display:none!important}
+
+/* Read-only, full-screen monitor presentation. Keep state colors at full strength. */
+.tv-heading{display:none}
+.tv-mode{overflow:hidden}
+.tv-mode>header,.tv-mode aside,.tv-mode .view-tools,.tv-mode .view-caption,.tv-mode .outside-intro,.tv-mode .aerial-credit,.tv-mode .camera-heading select,.tv-mode .camera-frame button{display:none!important}
+.tv-mode main{display:block;height:100dvh}
+.tv-mode #stage{height:100dvh;min-height:0}
+.tv-mode .tv-heading{display:flex;align-items:center;gap:24px;position:absolute;top:20px;left:24px;right:24px;z-index:4;pointer-events:none}
+.tv-mode .tv-heading h1{font:500 26px/1.2 Inter,ui-sans-serif,sans-serif;margin:0}
+.tv-mode #tv-status{font-size:14px;color:#f0c565}
+.tv-mode #stage button:disabled,.tv-mode #stage input:disabled{opacity:1;cursor:default}
+.tv-mode #stage{pointer-events:none}
+.tv-mode .room-marker .climate-status{display:flex}
+.tv-mode .central-climate{top:76px}
+.tv-mode #outside-view{padding:70px 24px 16px;overflow:hidden}
+.tv-mode #aerial-photo{inset:0;height:100dvh}
+.tv-mode .outside-content{max-width:none;height:100%}
+.tv-mode .camera-grid{height:100%;grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
+.tv-mode .camera-card{display:flex;flex-direction:column}
+.tv-mode .camera-frame{flex:1;min-height:0;aspect-ratio:auto}
+.tv-mode .camera-controls{flex-shrink:0}
+
+/* Fade through the stage background while swapping the scene underneath. */
+.tv-mode #stage::after{content:"";position:absolute;inset:0;background:#101619;opacity:0;transition:opacity .35s ease-in-out;z-index:10;pointer-events:none}
+.tv-mode #stage.tv-fading::after{opacity:1}
+/* Keep eager camera images mounted and laid out while indoor views are shown. */
+.tv-mode #outside-view[hidden]{display:block;visibility:hidden;pointer-events:none}
+@media(prefers-reduced-motion:reduce){.tv-mode #stage::after{transition:none}}
