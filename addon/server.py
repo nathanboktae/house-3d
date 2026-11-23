@@ -2,6 +2,7 @@
 import asyncio
 import json
 import os
+import pwd
 import weakref
 from pathlib import Path
 
@@ -113,9 +114,18 @@ def create_app(static_dir, token, *, upstream='http://supervisor/core/websocket'
     return app
 
 
-if __name__ == '__main__':
-    options_path = Path('/data/options.json')
+def startup_app(options_path=Path('/data/options.json'), static_dir='/app/static'):
     options = json.loads(options_path.read_text()) if options_path.exists() else {}
-    app = create_app('/app/static', os.environ.get('SUPERVISOR_TOKEN', ''),
+    # Supervisor owns options.json; read it before permanently dropping root.
+    # Do not change the permissions or ownership of Supervisor-managed files.
+    if os.geteuid() == 0:
+        viewer = pwd.getpwnam('viewer')
+        os.setgroups([])
+        os.setgid(viewer.pw_gid)
+        os.setuid(viewer.pw_uid)
+    return create_app(static_dir, os.environ.get('SUPERVISOR_TOKEN', ''),
                      default_view=options.get('default_view', 'dollhouse'))
-    web.run_app(app, host='0.0.0.0', port=8099, access_log=None)
+
+
+if __name__ == '__main__':
+    web.run_app(startup_app(), host='0.0.0.0', port=8099, access_log=None)

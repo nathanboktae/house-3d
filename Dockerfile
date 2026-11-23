@@ -14,6 +14,6 @@ COPY addon/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt && adduser -D -u 1000 viewer
 COPY --from=assets /src/website/dist ./static
 COPY addon/server.py ./server.py
-USER viewer
+# Startup reads Supervisor options as root, then drops to viewer before serving.
 EXPOSE 8099
 CMD ["python", "server.py"]

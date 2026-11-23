@@ -5,7 +5,9 @@ from pathlib import Path
 
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
-from server import create_app
+from server import create_app, startup_app
+from unittest.mock import Mock, patch
+from types import SimpleNamespace
 
 
 class IngressTests(unittest.IsolatedAsyncioTestCase):
@@ -94,6 +96,22 @@ class IngressTests(unittest.IsolatedAsyncioTestCase):
             create_app(self.root, '')
         with self.assertRaises(ValueError):
             create_app(self.root, 'test', default_view='../bad')
+
+class StartupTests(unittest.TestCase):
+    def test_options_are_read_before_privileges_drop_and_server_creation(self):
+        events = []
+        options = Mock()
+        options.exists.return_value = True
+        options.read_text.side_effect = lambda: events.append('read') or '{"default_view":"basement"}'
+        with patch('server.os.geteuid', return_value=0), \
+             patch('server.pwd.getpwnam', return_value=SimpleNamespace(pw_uid=1000, pw_gid=1000)), \
+             patch('server.os.setgroups', side_effect=lambda value: events.append(('groups', value))), \
+             patch('server.os.setgid', side_effect=lambda value: events.append(('gid', value))), \
+             patch('server.os.setuid', side_effect=lambda value: events.append(('uid', value))), \
+             patch('server.create_app', side_effect=lambda *args, **kwargs: events.append(('app', kwargs['default_view']))):
+            startup_app(options)
+        self.assertEqual(events, ['read', ('groups', []), ('gid', 1000), ('uid', 1000), ('app', 'basement')])
+
 
 if __name__ == '__main__':
     unittest.main()

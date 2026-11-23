@@ -28,4 +28,19 @@ jobs:
       - run: python -m unittest discover -s website/tests -p 'test_*.py'
       - run: docker build -t house-3d:test .
       - name: Test bridge in the built non-root container
-        run: docker run --rm --entrypoint python -v "$PWD/addon/test_server.py:/app/test_server.py:ro" house-3d:test -m unittest test_server
+        run: docker run --rm --user 1000:1000 --entrypoint python -v "$PWD/addon/test_server.py:/app/test_server.py:ro" house-3d:test -m unittest test_server
+      - name: Test startup with Supervisor-owned options
+        run: |
+          mkdir -p /tmp/house-options
+          printf '%s' '{"default_view":"basement"}' > /tmp/house-options/options.json
+          sudo chown root:root /tmp/house-options/options.json
+          sudo chmod 600 /tmp/house-options/options.json
+          docker run -d --name house-startup -e SUPERVISOR_TOKEN=synthetic-test-token -v /tmp/house-options:/data:ro house-3d:test
+          trap 'docker logs house-startup; docker rm -f house-startup' EXIT
+          ready=false
+          for attempt in $(seq 1 30); do
+            if docker exec house-startup python -c "import urllib.request, urllib.error; exec('try: urllib.request.urlopen(\"http://127.0.0.1:8099/runtime.json\")\nexcept urllib.error.HTTPError as e: assert e.code == 403')"; then ready=true; break; fi
+            sleep 1
+          done
+          test "$ready" = true
+          docker exec house-startup python -c "from pathlib import Path; s=Path('/proc/1/status').read_text(); assert 'Uid:\t1000\t1000\t1000\t1000' in s; assert 'Gid:\t1000\t1000\t1000\t1000' in s"

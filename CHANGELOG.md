@@ -1,3 +1,9 @@
+# 0.1.2
+
+- Fix startup when Supervisor's `/data/options.json` is readable only by root.
+- Read app options before dropping to the unprivileged viewer user; preserve Supervisor file permissions.
+- Test actual container startup with a root-owned, mode-0600 options file on AMD64 and ARM64.
+
 # 0.1.1
 
 - Add read-only TV mode with `?tv=1`: Main Floor, Basement, and Garage rotate every 12 seconds with a fade.

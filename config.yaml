@@ -1,5 +1,5 @@
 name: House 3D
-version: "0.1.1"
+version: "0.1.2"
 slug: house_3d
 description: Interactive 3D home with lights, temperatures, and climate controls
 url: https://github.com/nathanboktae/house-3d
