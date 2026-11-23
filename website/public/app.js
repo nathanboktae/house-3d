@@ -1,3 +1,4 @@
+import {CameraConnection} from './camera-connection.mjs';
 import {teslaStatus} from './tesla.mjs?v=rollo1';
 import {outdoorCameras,findCamera,cameraStreamURL} from './cameras.mjs';
 import {loadRuntime,ingressConnection} from './runtime.mjs';
@@ -297,7 +298,7 @@ for(const route of views){
 }
 $('aerial-photo').onerror=()=>{$('aerial-error').hidden=false};
 function stopCameras(){
- for(const panel of cameraPanels.values()){clearTimeout(panel.timer);panel.image.removeAttribute('src');panel.image.hidden=true;}
+ for(const panel of cameraPanels.values())panel.connection.stop();
 }
 function appendTesla(container){
  const {battery,charging,label}=teslaStatus(snapshot);
@@ -327,12 +328,14 @@ function renderOutside(){
    const image=document.createElement('img');image.alt=`${config.name} camera feed`;image.loading='eager';image.referrerPolicy='no-referrer';image.hidden=true;
    const status=document.createElement('p');status.className='camera-status';status.setAttribute('role','status');
    const retry=document.createElement('button');retry.disabled=tvMode;retry.textContent='Retry feed';retry.hidden=true;
-   retry.onclick=()=>{image.removeAttribute('src');renderOutside()};
-   image.onload=()=>{clearTimeout(panel.timer);image.hidden=false;status.hidden=true;retry.hidden=true};
-   image.onerror=()=>{clearTimeout(panel.timer);image.hidden=true;status.hidden=false;status.textContent='Camera feed unavailable.';retry.hidden=false;if(tvMode&&!document.hidden)panel.timer=setTimeout(()=>{image.removeAttribute('src');renderOutside()},10000)};
+   const connection=new CameraConnection(image,(state,delay,reason)=>{
+    status.hidden=state==='live';retry.hidden=state!=='retrying';
+    status.textContent=state==='connecting'?'Connecting camera…':state==='retrying'?`${reason} Retrying in ${delay/1000} seconds.`:'';
+   });
+   retry.onclick=()=>connection.retry();
    frame.append(image,status,retry);card.append(frame);
    const controls=document.createElement('div');controls.className='camera-controls';if(config.lights.length)card.append(controls);
-   $('camera-grid').append(card);panel={image,status,retry,controls,select,selected};cameraPanels.set(config.key,panel);
+   $('camera-grid').append(card);panel={image,status,retry,controls,select,selected,connection};cameraPanels.set(config.key,panel);
   }
   const {image,status,retry,controls,select}=panel;
   const cameras=snapshot.entities.filter(entity=>entity.id.startsWith('camera.'));
@@ -346,11 +349,10 @@ function renderOutside(){
   const entity=panel.selected?cameras.find(entity=>entity.id===panel.selected):findCamera(snapshot.entities,config);
   select.hidden=!!entity;
   const source=(tvMode||activeView==='outside')&&!document.hidden&&snapshot.status==='connected'?cameraStreamURL(entity,homeAssistant.config):null;
-  if(source){
-   if(image.getAttribute('src')!==source){status.hidden=false;status.textContent='Connecting camera…';retry.hidden=true;clearTimeout(panel.timer);panel.timer=setTimeout(()=>{status.hidden=false;status.textContent='Camera is taking longer to connect.';retry.hidden=false},30000);image.src=source;image.hidden=false;}
-  }else{
-   clearTimeout(panel.timer);image.removeAttribute('src');image.hidden=true;status.hidden=false;retry.hidden=true;
-   status.textContent=snapshot.status!=='connected'?'Waiting for Home Assistant connection.':!entity?'Choose a camera above.':document.hidden?'Camera paused.':'Camera unavailable.';
+  panel.connection.update(source);
+  if(!source){
+   status.hidden=false;retry.hidden=true;
+   status.textContent=snapshot.status!=='connected'?'Waiting for Home Assistant connection.':!entity?'Camera source unavailable.':document.hidden?'Camera paused.':'Camera unavailable.';
   }
   controls.replaceChildren();
   for(const [id,title] of config.lights){

@@ -1,3 +1,11 @@
+# 0.1.3
+
+- Monitor each camera connection and retry errors or 30-second connection timeouts automatically.
+- Back off retries from 5 seconds to a maximum of 2 minutes, resetting after 60 seconds connected.
+- Recognize MJPEG first frames without waiting for the stream to finish loading.
+- Preserve healthy feeds and pending retries across TV rotations and HA state updates.
+- Cancel retries while hidden or disconnected; show retry status in the affected camera panel.
+
 # 0.1.2
 
 - Fix startup when Supervisor's `/data/options.json` is readable only by root.
